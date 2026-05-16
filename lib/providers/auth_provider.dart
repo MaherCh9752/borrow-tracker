@@ -24,6 +24,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
     if (firebaseUser != null) {
       _status = AuthStatus.authenticated;
+      _user ??= UserModel.fromFirebaseUser(
+        firebaseUser.uid,
+        firebaseUser.email ?? '',
+        firebaseUser.displayName,
+      );
     } else {
       _status = AuthStatus.unauthenticated;
       _user = null;

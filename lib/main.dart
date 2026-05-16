@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/entry_provider.dart';
 import 'screens/auth_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -64,7 +64,7 @@ class AuthWrapper extends StatelessWidget {
           body: Center(child: CircularProgressIndicator()),
         );
       case AuthStatus.authenticated:
-        return const HomeScreen();
+        return const DashboardScreen();
       case AuthStatus.unauthenticated:
         return const AuthScreen();
     }
