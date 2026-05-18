@@ -63,6 +63,18 @@ Flutter mobile app for tracking borrowed and lent money.
   - Mark Partial — set status to partial
   - Delete — confirmation dialog, then removes from Firestore
 
+### Search & Filters (`lib/providers/entry_provider.dart`, `lib/screens/all_records_screen.dart`)
+- Text search by person name (case-insensitive, client-side)
+- Status filter (Pending / Paid / Partial)
+- Type filter (Borrowed / Lent)
+- Currency filter (dynamically populated from user's used currencies)
+- Deadline filter (Has deadline / No deadline / Overdue / Next 7 days)
+- Filters toggle on/off via bottom sheet picker
+- Active filters highlighted with primary color
+- Filter count indicator in AppBar
+- Clear all filters button
+- Distinct empty states: "no entries" vs "no matches"
+
 ### Add/Edit Entry Screen (`lib/screens/add_edit_entry_screen.dart`)
 - Person Name (TextFormField, required)
 - Type toggle (SegmentedButton: I Borrowed / I Lent)
@@ -96,6 +108,7 @@ Flutter mobile app for tracking borrowed and lent money.
 - <s>Authentication</s>
 - <s>CRUD entries</s>
 - <s>Dashboard</s>
+- <s>Search & Filters</s>
 - Notifications
 - Statistics
 - Offline support

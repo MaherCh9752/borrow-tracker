@@ -28,9 +28,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   DateTime? _deadline;
   bool _isSaving = false;
 
-  static const List<String> _currencies = [
-    'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'INR', 'MAD',
-  ];
+  static const List<String> _currencies = ['USD', 'EUR', 'GBP', 'TND'];
 
   @override
   void initState() {
@@ -40,7 +38,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     _amountController.text = e != null ? e.amount.toStringAsFixed(2) : '';
     _notesController.text = e?.notes ?? '';
     _type = e?.type ?? EntryType.borrow;
-    _currency = e?.currency ?? 'USD';
+    _currency = e?.currency ?? 'TND';
     _status = e?.status ?? EntryStatus.pending;
     _createdAt = e?.createdAt ?? DateTime.now();
     _deadline = e?.deadline;
@@ -184,8 +182,9 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                         prefixText: '\$ ',
                         border: OutlineInputBorder(),
                       ),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return 'Amount is required.';
@@ -208,8 +207,9 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                         border: OutlineInputBorder(),
                       ),
                       items: _currencies
-                          .map((c) =>
-                              DropdownMenuItem(value: c, child: Text(c)))
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
                           .toList(),
                       onChanged: (v) {
                         if (v != null) _currency = v;
@@ -223,9 +223,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
               const SizedBox(height: 8),
               DropdownButtonFormField<EntryStatus>(
                 initialValue: _status,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(border: OutlineInputBorder()),
                 items: const [
                   DropdownMenuItem(
                     value: EntryStatus.pending,
@@ -350,9 +348,7 @@ class _DateRow extends StatelessWidget {
           date != null
               ? '${date!.day}/${date!.month}/${date!.year}'
               : (hint ?? 'Not set'),
-          style: TextStyle(
-            color: date != null ? null : Colors.grey[500],
-          ),
+          style: TextStyle(color: date != null ? null : Colors.grey[500]),
         ),
       ),
     );

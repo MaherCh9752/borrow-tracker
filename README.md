@@ -110,7 +110,23 @@ Tap **Add Entry** → entry is saved to Firestore → dashboard updates automati
 
 Editing an entry updates Firestore in real time and the dashboard reflects changes immediately.
 
-### 5. Architecture Overview
+### 5. Search & Filters
+Navigate to **All Records** via the list icon or View All link. At the top you'll find:
+
+| Feature | How to use |
+|---------|-----------|
+| **Search bar** | Type any part of a person's name — results filter instantly |
+| **Status chip** | Tap → pick Pending, Paid, or Partial from the bottom sheet |
+| **Type chip** | Tap → pick I Borrowed or I Lent |
+| **Currency chip** | Tap → pick from currencies you've used |
+| **Deadline chip** | Tap → pick Has deadline / No deadline / Overdue / Next 7 days |
+
+- Active chips are highlighted in the app's primary color
+- Tap an already-active chip to clear that filter
+- The AppBar shows a **clear all** icon when any filter is active
+- When no entries match, a "Clear filters" button appears
+
+### 6. Architecture Overview
 
 ```
 lib/
@@ -124,7 +140,7 @@ lib/
 │   └── entry_service.dart    # Firestore CRUD operations
 ├── providers/
 │   ├── auth_provider.dart    # Auth state management
-│   └── entry_provider.dart   # Entry state with computed aggregates
+│   └── entry_provider.dart   # Entry state, filters, computed aggregates
 ├── screens/
 │   ├── auth_screen.dart      # Login/register UI
 │   ├── home_screen.dart      # Legacy placeholder

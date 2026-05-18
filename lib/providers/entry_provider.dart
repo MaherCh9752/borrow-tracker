@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/borrow_lend.dart';
 import '../services/entry_service.dart';
 
+enum DeadlineFilter { all, hasDeadline, noDeadline, overdue, upcoming }
+
 class EntryProvider extends ChangeNotifier {
   final EntryService _entryService = EntryService();
   StreamSubscription? _subscription;
@@ -11,10 +13,77 @@ class EntryProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  String _searchQuery = '';
+  EntryStatus? _statusFilter;
+  EntryType? _typeFilter;
+  String? _currencyFilter;
+  DeadlineFilter _deadlineFilter = DeadlineFilter.all;
+  bool _filtersActive = false;
+  int _activeFilterCount = 0;
+
   List<BorrowLend> get entries => _entries;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasEntries => _entries.isNotEmpty;
+
+  String get searchQuery => _searchQuery;
+  EntryStatus? get statusFilter => _statusFilter;
+  EntryType? get typeFilter => _typeFilter;
+  String? get currencyFilter => _currencyFilter;
+  DeadlineFilter get deadlineFilter => _deadlineFilter;
+  bool get filtersActive => _filtersActive;
+  int get activeFilterCount => _activeFilterCount;
+
+  List<BorrowLend> get filteredEntries {
+    var result = _entries.toList();
+
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      result = result
+          .where((e) => e.personName.toLowerCase().contains(query))
+          .toList();
+    }
+
+    if (_statusFilter != null) {
+      result = result.where((e) => e.status == _statusFilter).toList();
+    }
+
+    if (_typeFilter != null) {
+      result = result.where((e) => e.type == _typeFilter).toList();
+    }
+
+    if (_currencyFilter != null) {
+      result = result.where((e) => e.currency == _currencyFilter).toList();
+    }
+
+    switch (_deadlineFilter) {
+      case DeadlineFilter.hasDeadline:
+        result = result.where((e) => e.deadline != null).toList();
+      case DeadlineFilter.noDeadline:
+        result = result.where((e) => e.deadline == null).toList();
+      case DeadlineFilter.overdue:
+        final now = DateTime.now();
+        result = result
+            .where((e) =>
+                e.deadline != null &&
+                e.deadline!.isBefore(now) &&
+                e.status != EntryStatus.paid)
+            .toList();
+      case DeadlineFilter.upcoming:
+        final now = DateTime.now();
+        final weekFromNow = now.add(const Duration(days: 7));
+        result = result
+            .where((e) =>
+                e.deadline != null &&
+                e.deadline!.isAfter(now) &&
+                e.deadline!.isBefore(weekFromNow))
+            .toList();
+      case DeadlineFilter.all:
+        break;
+    }
+
+    return result;
+  }
 
   double get totalBorrowed => _entries
       .where((e) => e.type == EntryType.borrow && e.status != EntryStatus.paid)
@@ -57,6 +126,59 @@ class EntryProvider extends ChangeNotifier {
   int get pendingCount => pendingEntries.length;
   int get upcomingDeadlineCount => upcomingDeadlines.length;
 
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void setStatusFilter(EntryStatus? status) {
+    _statusFilter = _statusFilter == status ? null : status;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void setTypeFilter(EntryType? type) {
+    _typeFilter = _typeFilter == type ? null : type;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void setCurrencyFilter(String? currency) {
+    _currencyFilter = _currencyFilter == currency ? null : currency;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void setDeadlineFilter(DeadlineFilter filter) {
+    _deadlineFilter = _deadlineFilter == filter ? DeadlineFilter.all : filter;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _searchQuery = '';
+    _statusFilter = null;
+    _typeFilter = null;
+    _currencyFilter = null;
+    _deadlineFilter = DeadlineFilter.all;
+    _recalcFilters();
+    notifyListeners();
+  }
+
+  void _recalcFilters() {
+    _activeFilterCount = 0;
+    if (_statusFilter != null) _activeFilterCount++;
+    if (_typeFilter != null) _activeFilterCount++;
+    if (_currencyFilter != null) _activeFilterCount++;
+    if (_deadlineFilter != DeadlineFilter.all) _activeFilterCount++;
+    if (_searchQuery.isNotEmpty) _activeFilterCount++;
+    _filtersActive = _activeFilterCount > 0;
+  }
+
+  Set<String> get usedCurrencies =>
+      _entries.map((e) => e.currency).toSet();
+
   /// Starts listening to entries for the given [userId].
   void listenToEntries(String userId) {
     _subscription?.cancel();
@@ -78,7 +200,6 @@ class EntryProvider extends ChangeNotifier {
     );
   }
 
-  /// Creates a new entry.
   Future<bool> addEntry({
     required String userId,
     required BorrowLend entry,
@@ -93,7 +214,6 @@ class EntryProvider extends ChangeNotifier {
     }
   }
 
-  /// Updates an existing entry.
   Future<bool> editEntry({
     required String userId,
     required BorrowLend entry,
@@ -108,7 +228,6 @@ class EntryProvider extends ChangeNotifier {
     }
   }
 
-  /// Deletes an entry by ID.
   Future<bool> deleteEntry({
     required String userId,
     required String entryId,
