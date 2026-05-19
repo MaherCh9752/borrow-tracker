@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
+import '../providers/notification_provider.dart';
 import '../utils/constants.dart';
 import 'add_edit_entry_screen.dart';
 import 'all_records_screen.dart';
+import 'notification_settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +23,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final userId = context.read<AuthProvider>().user!.uid;
-      context.read<EntryProvider>().listenToEntries(userId);
+      final entryProvider = context.read<EntryProvider>();
+      final notificationProvider = context.read<NotificationProvider>();
+
+      entryProvider.listenToEntries(userId);
+
+      entryProvider.onEntriesRefreshed = () {
+        if (mounted) {
+          notificationProvider
+              .onEntriesUpdated(entryProvider.entries);
+        }
+      };
+
+      notificationProvider.initialize(userId);
     });
   }
 
@@ -41,6 +55,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AllRecordsScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsScreen()),
             ),
           ),
           IconButton(

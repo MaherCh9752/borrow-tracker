@@ -12,6 +12,10 @@ dependencies:
   firebase_auth: any
   cloud_firestore: any
   provider: any
+  flutter_local_notifications: ^17.2.0
+  timezone: ^0.9.4
+  shared_preferences: ^2.5.5
+  workmanager: ^0.9.0+3
 dev_dependencies:
   flutter_test:
     sdk: flutter

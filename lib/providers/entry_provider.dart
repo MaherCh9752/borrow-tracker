@@ -9,6 +9,8 @@ class EntryProvider extends ChangeNotifier {
   final EntryService _entryService = EntryService();
   StreamSubscription? _subscription;
 
+  void Function()? onEntriesRefreshed;
+
   List<BorrowLend> _entries = [];
   bool _isLoading = false;
   String? _error;
@@ -191,6 +193,7 @@ class EntryProvider extends ChangeNotifier {
         _isLoading = false;
         _error = null;
         notifyListeners();
+        onEntriesRefreshed?.call();
       },
       onError: (e) {
         _error = e.toString();
@@ -245,6 +248,7 @@ class EntryProvider extends ChangeNotifier {
   @override
   void dispose() {
     _subscription?.cancel();
+    onEntriesRefreshed = null;
     super.dispose();
   }
 }

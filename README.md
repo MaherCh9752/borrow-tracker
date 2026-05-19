@@ -1,16 +1,20 @@
 # Borrow Tracker
 
-A Flutter mobile app for tracking borrowed and lent money. Manage debts, set repayment deadlines, and keep a clear record of who owes whom.
+A Flutter mobile app for tracking borrowed and lent money. Manage debts, set repayment deadlines, receive notifications (even when the app is killed), and keep a clear record of who owes whom.
 
-## Features
+---
 
-- **Authentication** — Sign up, sign in, and password reset via Firebase Auth
-- **Dashboard** — At-a-glance summary of total borrowed, total lent, pending repayments, and upcoming deadlines
-- **Entry Management** — Add, edit, delete, and update status of borrow/lend records
-- **Real-time Sync** — All data synced instantly via Cloud Firestore streams
-- **Currencies** — Support for 10 major currencies (USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, INR, MAD)
-- **Status Tracking** — Mark entries as Pending, Paid, or Partial
-- **Deadlines** — Set optional repayment deadlines for each entry
+## Features at a Glance
+
+| Feature | Description |
+|---------|-------------|
+| **Authentication** | Email/password sign-up, sign-in, password reset, session persistence |
+| **Dashboard** | Total borrowed/lent, pending count, upcoming deadlines, recent entries |
+| **Entry CRUD** | Add, edit, delete, mark paid/partial/pending |
+| **Search & Filters** | Name search, status, type, currency, deadline filters |
+| **Notifications** | In-app + background delivery via WorkManager. Upcoming, due-today, overdue reminders at a configurable time. Even fires when the app is closed. |
+| **Currencies** | 10 major currencies (USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, INR, MAD) |
+| **Material 3** | Modern Material Design 3 with dynamic color scheme |
 
 ---
 
@@ -24,16 +28,16 @@ A Flutter mobile app for tracking borrowed and lent money. Manage debts, set rep
 ## Firebase Setup
 
 1. Go to the [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project (or use an existing one)
+2. Create a project (or use an existing one)
 3. Enable **Authentication** → **Sign-in method** → **Email/Password**
 4. Enable **Cloud Firestore** → Create database in **test mode** (or configure security rules)
 5. Register your app:
    - **Android**: Package name `com.borrowtracker.borrow_tracker`
    - **iOS**: Bundle ID `com.borrowtracker.borrowTracker`
-6. Download the config files:
+6. Download config files:
    - `google-services.json` → place in `android/app/`
    - `GoogleService-Info.plist` → place in `ios/Runner/`
-7. Run `flutterfire configure` (optional, generates `lib/firebase_options.dart`) or configure manually
+7. Run `flutterfire configure` (optional) or configure manually
 
 ---
 
@@ -47,8 +51,11 @@ cd borrow-tracker
 # Install dependencies
 flutter pub get
 
-# Run the app
+# Run in debug mode
 flutter run
+
+# Build a release APK
+flutter build apk --release
 ```
 
 ---
@@ -56,116 +63,148 @@ flutter run
 ## Feature Tour
 
 ### 1. Authentication
-| Screen | What to try |
+
+| What to try | How |
+|-------------|-----|
+| **Sign Up** | Tap **Sign Up** → enter name, email, password → tap **Sign Up** |
+| **Sign In** | Enter email + password → tap **Sign In** |
+| **Password Reset** | Tap **Forgot Password?** → enter email → check inbox for reset link |
+| **Validation** | Leave fields empty or enter an invalid email → see error messages |
+
+When you sign up, a user document is created in Firestore at `users/{uid}`. The session persists across app restarts.
+
+### 2. First-Run Notification Prompt
+
+On the very first app launch (before you even sign in), a dialog asks:
+> **Enable notifications to get reminded about upcoming deadlines and overdue payments.**
+
+| Button | What happens |
 |--------|-------------|
-| Sign In | Enter email + password → tap **Sign In** |
-| Sign Up | Tap **Sign Up** → fill in name, email, password → tap **Sign Up** |
-| Password Reset | Tap **Forgot Password?** → enter email → check inbox for reset link |
-| Validation | Leave fields empty or enter an invalid email → see error messages |
+| **Enable** | OS notification permission + exact-alarm permission requested. After login, notification settings are auto-enabled |
+| **Skip** | Dialog dismissed. You can enable later from the bell icon on the dashboard |
 
-When you sign up, a user document is created in Firestore at `users/{uid}`. The auth session persists across app restarts.
+This dialog only appears **once per device** (tracked via `SharedPreferences`).
 
-### 2. Dashboard
+### 3. Dashboard
+
 After signing in, the **Dashboard** shows:
 
-| Card | Description |
-|------|-------------|
-| **Total Borrowed** | Sum of all unpaid borrow entries |
-| **Total Lent** | Sum of all unpaid lend entries |
+| Card / Section | What it shows |
+|----------------|---------------|
+| **Total Borrowed** | Sum of all unpaid borrow entries (orange) |
+| **Total Lent** | Sum of all unpaid lend entries (teal) |
 | **Pending** | Count of entries with Pending status |
-| **Deadlines (7d)** | Count of unpaid entries with deadlines within the next 7 days |
-| **Recent Entries** | Last 5 entries with person name, amount, status, and relative time |
+| **Deadlines (7d)** | Count of unpaid entries with deadlines in the next 7 days |
+| **Recent Entries** | Last 5 entries with person name, amount, status chip, and relative time |
 
 - Tap the **+** FAB → add a new entry
-- Tap the **list icon** in the AppBar → view all records
-- Pull down to refresh
+- Tap the **list icon** or **View All** → all records with search and filters
+- Tap the **bell icon** → notification settings
 
-### 3. Add Entry
-Tap the **+** FAB on the dashboard to open the add form:
+### 4. Add / Edit Entry
+
+Tap the **+** FAB on the dashboard:
 
 | Field | What to enter |
 |-------|---------------|
-| Person Name | Name of the person (required) |
-| Type | Toggle between **I Borrowed** (I owe them) or **I Lent** (they owe me) |
-| Amount | Numeric value > 0 (required) |
-| Currency | Select from 10 currencies |
+| Person Name | Required |
+| Type | **I Borrowed** (I owe them) or **I Lent** (they owe me) |
+| Amount | Required, must be > 0 |
+| Currency | USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY, INR, MAD |
 | Status | Pending / Paid / Partial |
-| Date | Date of the entry (defaults to today) |
-| Deadline | Optional repayment due date |
-| Notes | Any additional details (optional) |
+| Date | Defaults to today |
+| Deadline | Optional due date |
+| Notes | Optional |
 
-Tap **Add Entry** → entry is saved to Firestore → dashboard updates automatically.
+Tap **Add Entry** → saved to Firestore → dashboard updates instantly.
 
-### 4. All Records
-- Navigate via the **list icon** in the dashboard AppBar or **View All** in Recent Entries
-- Each entry shows: person name, amount with sign (+/-), currency, deadline, and status chip
-- Tap the **⋮** menu on any entry to:
+To **edit**, navigate to **All Records** → tap the **⋮** menu → **Edit**.
 
-| Action | Behavior |
-|--------|----------|
-| **Edit** | Opens the entry in edit mode with all fields pre-filled |
-| **Mark Paid / Mark Pending** | Toggles the status instantly |
-| **Mark Partial** | Sets status to Partial |
-| **Delete** | Shows confirmation dialog → removes entry from Firestore |
+### 5. All Records & Filters
 
-Editing an entry updates Firestore in real time and the dashboard reflects changes immediately.
+Navigate via the **list icon** in the dashboard AppBar.
 
-### 5. Search & Filters
-Navigate to **All Records** via the list icon or View All link. At the top you'll find:
+| Action | How |
+|--------|-----|
+| **Search** | Type a person's name in the search bar |
+| **Filter by status** | Tap the status chip → pick Pending / Paid / Partial |
+| **Filter by type** | Tap the type chip → pick I Borrowed / I Lent |
+| **Filter by currency** | Tap the currency chip → pick a currency |
+| **Filter by deadline** | Tap the deadline chip → pick Has deadline / No deadline / Overdue / Next 7 days |
+| **Edit** | Tap the **⋮** menu → **Edit** |
+| **Mark Paid / Pending** | Tap the **⋮** menu → toggle status instantly |
+| **Mark Partial** | Tap the **⋮** menu → sets status to Partial |
+| **Delete** | Tap the **⋮** menu → confirm deletion |
 
-| Feature | How to use |
-|---------|-----------|
-| **Search bar** | Type any part of a person's name — results filter instantly |
-| **Status chip** | Tap → pick Pending, Paid, or Partial from the bottom sheet |
-| **Type chip** | Tap → pick I Borrowed or I Lent |
-| **Currency chip** | Tap → pick from currencies you've used |
-| **Deadline chip** | Tap → pick Has deadline / No deadline / Overdue / Next 7 days |
+Active filters are highlighted in the app's primary color. Tap an active chip to clear it. The AppBar shows a clear-all icon when filters are active.
 
-- Active chips are highlighted in the app's primary color
-- Tap an already-active chip to clear that filter
-- The AppBar shows a **clear all** icon when any filter is active
-- When no entries match, a "Clear filters" button appears
+### 6. Notifications
 
-### 6. Architecture Overview
+The app has two delivery mechanisms so reminders fire **even when the app is closed**:
+
+| Mechanism | When it fires |
+|-----------|---------------|
+| **In-app Timer** (every 5s) | While the app is open or in the background |
+| **WorkManager** (JobScheduler) | Even if the app is killed. Android OS guarantees execution |
+
+#### Notification types
+
+| Type | When | Example |
+|------|------|---------|
+| **Upcoming Deadline** | X days before the due date (configurable: 1/3/7) | "John — $50 is due in 3 days" |
+| **Due Today** | On the due date at the configured reminder time | "Jane — $120 is due today!" |
+| **Overdue Reminder** | After the deadline passes (once or daily) | "Bob — $200 was due on 15/5/2026" |
+
+#### Configure reminders
+
+Tap the **bell icon** on the dashboard:
+
+| Setting | What it does |
+|---------|--------------|
+| **Enable Notifications** | Master toggle |
+| **Remind on day of deadline** | Fire at reminder time on the due date |
+| **Upcoming Deadline Reminders** | Enable pre-due-date reminders |
+| **Remind before** | 1 day / 3 days / 7 days before the deadline |
+| **Overdue Reminders** | Enable reminders after the deadline passes |
+| **Daily Overdue Reminder** | Repeat every day until the entry is marked paid |
+| **Reminder Time** | Time of day for all reminders (default 09:00) |
+
+Tap **Save Settings** → changes are persisted to Firestore and notifications reschedule automatically.
+
+#### What to try
+
+1. Add an entry with a deadline **a few minutes from now**
+2. Set the reminder time to just before the deadline
+3. Close the app completely (swipe from recents)
+4. Wait — a notification should appear at the scheduled time
+5. Reopen the app → mark the entry as Paid → the overdue reminders stop
+
+> **Note**: On some Android OEMs (Xiaomi, Huawei, Samsung), you may need to disable battery optimization for the app in system settings to ensure timely WorkManager delivery.
+
+### 7. Architecture Overview
 
 ```
 lib/
-├── main.dart                 # App entry, providers, auth routing
-├── firebase_options.dart     # Firebase configuration
-├── models/
-│   ├── user_model.dart       # User data model
-│   └── borrow_lend.dart      # Borrow/lend entry model with enums
-├── services/
-│   ├── auth_service.dart     # Firebase Auth operations
-│   └── entry_service.dart    # Firestore CRUD operations
-├── providers/
-│   ├── auth_provider.dart    # Auth state management
-│   └── entry_provider.dart   # Entry state, filters, computed aggregates
-├── screens/
-│   ├── auth_screen.dart      # Login/register UI
-│   ├── home_screen.dart      # Legacy placeholder
-│   ├── dashboard_screen.dart # Main dashboard with cards
-│   ├── all_records_screen.dart # Full entry list with actions
-│   └── add_edit_entry_screen.dart # Entry form
-├── widgets/                  # Reusable widgets (future)
-└── utils/
-    └── constants.dart        # App-wide constants
+├── main.dart                          # App entry, providers, WorkManager init, first-run gate
+├── models/                            # Data models with Firestore serialization
+├── services/                          # Firebase, notifications, WorkManager callback
+├── providers/                         # ChangeNotifier state management
+├── screens/                           # UI screens (auth, dashboard, records, settings)
+└── utils/                             # Constants
 ```
-
----
-
-## Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
-| UI Framework | Flutter 3.35+ / Dart 3.9+ |
-| Authentication | Firebase Auth (email/password) |
-| Database | Cloud Firestore (real-time) |
-| State Management | Provider with ChangeNotifier |
-| Architecture | Feature-based, services + providers + screens |
+| UI | Flutter 3.35+ / Material 3 |
+| Auth | Firebase Auth (email/password) |
+| Database | Cloud Firestore (real-time streams) |
+| State | Provider + ChangeNotifier |
+| In-app notifications | flutter_local_notifications |
+| Background notifications | workmanager (JobScheduler) |
+| First-run tracking | shared_preferences |
 
 ---
 
 ## Project Status
 
-See [PROJECT-STATE.md](PROJECT-STATE.md) for detailed progress information.
+See [PROJECT-STATE.md](PROJECT-STATE.md) for a detailed list of implemented and pending features.
