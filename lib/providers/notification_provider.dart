@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,13 +59,32 @@ class NotificationProvider extends ChangeNotifier {
           .collection(AppConstants.usersCollection)
           .doc(_userId)
           .get();
-      final data = doc.data();
-      if (data != null && data['reminderSettings'] != null) {
-        _settings = ReminderSettings.fromMap(
-          Map<String, dynamic>.from(data['reminderSettings']),
-        );
+      if (doc.exists) {
+        final data = doc.data()!;
+        if (data['reminderSettings'] != null) {
+          _settings = ReminderSettings.fromMap(
+            Map<String, dynamic>.from(data['reminderSettings']),
+          );
+          debugPrint('[Notifications] Loaded from Firestore: enabled=${_settings.notificationsEnabled}');
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Notifications] Firestore load failed: $e');
+    }
+
+    // Fallback to local cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final json = prefs.getString('cached_reminder_settings');
+      if (json != null) {
+        final map = Map<String, dynamic>.from(jsonDecode(json));
+        _settings = ReminderSettings.fromMap(map);
+        debugPrint('[Notifications] Loaded from cache: enabled=${_settings.notificationsEnabled}');
       }
     } catch (_) {}
+
+    debugPrint('[Notifications] Using default settings');
   }
 
   Future<void> _saveSettings() async {
@@ -76,6 +96,13 @@ class NotificationProvider extends ChangeNotifier {
             {'reminderSettings': _settings.toMap()},
             SetOptions(merge: true),
           );
+
+      // Cache locally for offline/fallback
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'cached_reminder_settings',
+        jsonEncode(_settings.toMap()),
+      );
     } catch (_) {}
   }
 

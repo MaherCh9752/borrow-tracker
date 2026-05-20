@@ -8,6 +8,7 @@ import '../utils/constants.dart';
 import 'add_edit_entry_screen.dart';
 import 'all_records_screen.dart';
 import 'notification_settings_screen.dart';
+import 'statistics_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -55,6 +56,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AllRecordsScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart),
+            tooltip: 'Statistics',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StatisticsScreen()),
             ),
           ),
           IconButton(
