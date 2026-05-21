@@ -5,9 +5,23 @@ import '../utils/constants.dart';
 @pragma('vm:entry-point')
 void notificationCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    if (inputData == null) return Future.value(false);
+    if (inputData == null) {
+      print('[NotifCB] No input data');
+      return false;
+    }
 
     try {
+      final rawId = inputData['id'];
+      if (rawId == null) {
+        print('[NotifCB] No id in inputData');
+        return false;
+      }
+      final id = (rawId is int) ? rawId : (rawId as num).toInt();
+      final title = inputData['title'] as String? ?? '';
+      final body = inputData['body'] as String? ?? '';
+
+      print('[NotifCB] Firing: id=$id title=$title');
+
       final plugin = FlutterLocalNotificationsPlugin();
       await plugin.initialize(const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -27,9 +41,9 @@ void notificationCallbackDispatcher() {
       }
 
       await plugin.show(
-        inputData['id'] as int,
-        inputData['title'] as String? ?? '',
-        inputData['body'] as String? ?? '',
+        id,
+        title,
+        body,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             AppConstants.notificationChannelId,
@@ -37,12 +51,15 @@ void notificationCallbackDispatcher() {
             importance: Importance.high,
             priority: Priority.high,
           ),
+          iOS: DarwinNotificationDetails(),
         ),
       );
 
-      return Future.value(true);
-    } catch (_) {
-      return Future.value(false);
+      print('[NotifCB] Success: id=$id');
+      return true;
+    } catch (e) {
+      print('[NotifCB] Error: $e');
+      return false;
     }
   });
 }
