@@ -11,6 +11,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **flutter_local_notifications** (in-app delivery)
 - **workmanager** (background delivery — `JobScheduler` on Android)
 - **shared_preferences** (first-run tracking)
+- **fl_chart** (charts & graphs)
 
 ## Implemented Features
 
@@ -62,6 +63,15 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **First-run prompt**: Shown once at app boot (before login) via `SharedPreferences` flag. "Enable" requests OS notification + exact-alarm permissions. The flag `notification_enabled_from_boot` auto-enables Firestore settings after login, then self-destructs to never override the user's choice.
 - **Settings screen** (bell icon on dashboard): master toggle, individual toggles, time picker, day-before frequency, save to Firestore.
 
+### Statistics / Charts
+- **Three chart types** on a dedicated Statistics screen (bar chart icon in dashboard AppBar)
+- **Monthly Totals**: Grouped bar chart showing borrowed (orange) vs lent (teal) per month
+- **Payment Status**: Pie chart splitting total amount into paid (green) vs unpaid (orange) with percentages
+- **Debt History**: Curved line chart tracking net cumulative debt over time (borrow adds, lent subtracts)
+- **Smart labels**: Sparse axis labels avoid clutter; edge values hidden for cleaner look
+- **Empty state**: Friendly message when no entries exist
+- Powered by `fl_chart` 0.69+
+
 ### Material 3 UI
 - `useMaterial3: true`, `ColorScheme.fromSeed`
 - Segmented buttons, outlined buttons, filled buttons, snack bars, floating action button
@@ -93,7 +103,8 @@ lib/
 │   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
 │   ├── all_records_screen.dart        # Full list with actions & filters
 │   ├── add_edit_entry_screen.dart     # Entry form (add & edit)
-│   └── notification_settings_screen.dart # Reminder config UI
+│   ├── notification_settings_screen.dart # Reminder config UI
+│   └── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
 └── utils/
     └── constants.dart                 # App-wide constants
 ```
@@ -107,7 +118,6 @@ lib/
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- Statistics / charts
 - Offline support (Firestore persistence)
 - Export to CSV
 - Security / biometric lock
