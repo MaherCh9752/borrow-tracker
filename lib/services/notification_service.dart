@@ -97,17 +97,21 @@ class NotificationService {
     print('[NotifSvc] Registering one-time: id=$id delay=${delay.inSeconds}s');
 
     // Layer 1: WorkManager for background delivery
-    await Workmanager().registerOneOffTask(
-      'notif_$id',
-      'showNotification',
-      inputData: {
-        'id': id,
-        'title': title,
-        'body': body,
-      },
-      initialDelay: delay,
-      existingWorkPolicy: ExistingWorkPolicy.replace,
-    );
+    try {
+      await Workmanager().registerOneOffTask(
+        'notif_$id',
+        'showNotification',
+        inputData: {
+          'id': id,
+          'title': title,
+          'body': body,
+        },
+        initialDelay: delay,
+        existingWorkPolicy: ExistingWorkPolicy.replace,
+      );
+    } catch (e) {
+      print('[NotifSvc] WorkManager registerOneOffTask failed: $e');
+    }
 
     // Layer 2: Native AlarmManager (via flutter_local_notifications)
     // Fires even when the app is killed.
@@ -142,18 +146,22 @@ class NotificationService {
     print('[NotifSvc] Registering daily: id=$id firstDelay=${firstDelay.inSeconds}s');
 
     // Layer 1: WorkManager periodic task for background delivery
-    await Workmanager().registerPeriodicTask(
-      'notif_${id}_daily',
-      'showNotification',
-      inputData: {
-        'id': id,
-        'title': title,
-        'body': body,
-      },
-      initialDelay: firstDelay,
-      frequency: const Duration(hours: 24),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-    );
+    try {
+      await Workmanager().registerPeriodicTask(
+        'notif_${id}_daily',
+        'showNotification',
+        inputData: {
+          'id': id,
+          'title': title,
+          'body': body,
+        },
+        initialDelay: firstDelay,
+        frequency: const Duration(hours: 24),
+        existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
+      );
+    } catch (e) {
+      print('[NotifSvc] WorkManager registerPeriodicTask failed: $e');
+    }
 
     // Layer 2: Native AlarmManager repeating alarm
     // Fires even when app is killed. DateTimeComponents.time makes
@@ -214,15 +222,23 @@ class NotificationService {
 
   Future<void> cancel(int id) async {
     await _plugin.cancel(id);
-    await Workmanager().cancelByUniqueName('notif_$id');
-    await Workmanager().cancelByUniqueName('notif_${id}_daily');
+    try {
+      await Workmanager().cancelByUniqueName('notif_$id');
+      await Workmanager().cancelByUniqueName('notif_${id}_daily');
+    } catch (e) {
+      print('[NotifSvc] WorkManager cancel failed: $e');
+    }
   }
 
   /// Cancels pending delivery (WorkManager + zonedSchedule alarm).
   /// Does NOT hide already-shown notifications.
   Future<void> cancelScheduled(int id) async {
-    await Workmanager().cancelByUniqueName('notif_$id');
-    await Workmanager().cancelByUniqueName('notif_${id}_daily');
+    try {
+      await Workmanager().cancelByUniqueName('notif_$id');
+      await Workmanager().cancelByUniqueName('notif_${id}_daily');
+    } catch (e) {
+      print('[NotifSvc] WorkManager cancelScheduled failed: $e');
+    }
   }
 
   Future<void> cancelAll() async {
@@ -236,6 +252,10 @@ class NotificationService {
       }
     } catch (_) {}
     // Cancel all WorkManager tasks
-    await Workmanager().cancelAll();
+    try {
+      await Workmanager().cancelAll();
+    } catch (e) {
+      print('[NotifSvc] WorkManager cancelAll failed: $e');
+    }
   }
 }

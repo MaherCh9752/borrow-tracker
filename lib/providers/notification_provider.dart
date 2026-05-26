@@ -36,7 +36,8 @@ class NotificationProvider extends ChangeNotifier {
     _ensureTimer();
     _initialized = true;
     if (_entries.isNotEmpty && _settings.notificationsEnabled) {
-      await _notificationService.cancelAll();
+      // Schedule first, don't cancel — _scheduleAll replaces alarms by ID,
+      // so if scheduling fails, previous alarms survive.
       await _scheduleAll(_entries);
     }
     notifyListeners();
@@ -119,11 +120,17 @@ class NotificationProvider extends ChangeNotifier {
     _settings = settings;
     notifyListeners();
     await _saveSettings();
-    if (_settings.notificationsEnabled && _entries.isNotEmpty) {
-      await _notificationService.cancelAll();
-      await _scheduleAll(_entries);
-    } else {
-      await _notificationService.cancelAll();
+    try {
+      if (_settings.notificationsEnabled && _entries.isNotEmpty) {
+        // Replace rather than cancel-then-schedule. WorkManager's
+        // ExistingWorkPolicy.replace and zonedSchedule's same-ID reuse
+        // handle teardown of the old notification.
+        await _scheduleAll(_entries);
+      } else {
+        await _notificationService.cancelAll();
+      }
+    } catch (e) {
+      debugPrint('[Notifications] Scheduling error: $e');
     }
   }
 
@@ -144,6 +151,7 @@ class NotificationProvider extends ChangeNotifier {
   Future<void> onEntriesUpdated(List<BorrowLend> entries) async {
     _entries = entries;
     if (!_initialized || !_settings.notificationsEnabled) return;
+    // Replace rather than cancel-then-schedule.
     await _scheduleAll(entries);
   }
 
@@ -171,12 +179,16 @@ class NotificationProvider extends ChangeNotifier {
           '[Notifications] Firing now (${i + 1}/${due.length}): '
           '${n.title} - ${n.body}',
         );
-        await _notificationService.showNotification(
-          id: n.id,
-          title: n.title,
-          body: n.body,
-        );
-        await _notificationService.cancelScheduled(n.id);
+        try {
+          await _notificationService.showNotification(
+            id: n.id,
+            title: n.title,
+            body: n.body,
+          );
+          await _notificationService.cancelScheduled(n.id);
+        } catch (e) {
+          debugPrint('[Notifications] Fire single notification error: $e');
+        }
         if (i < due.length - 1) {
           await Future.delayed(const Duration(milliseconds: 300));
         }
@@ -190,6 +202,15 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> _scheduleAll(List<BorrowLend> entries) async {
     _pending = [];
+
+    // Cancel stale alarms for entries that are now paid or have no deadline
+    for (final entry in entries) {
+      if (entry.status == EntryStatus.paid || entry.deadline == null) {
+        for (final offset in [0, 1, 2]) {
+          await _notificationService.cancel(_notificationId(entry.id, offset));
+        }
+      }
+    }
 
     final now = DateTime.now();
     int scheduled = 0;

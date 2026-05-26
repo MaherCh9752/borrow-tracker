@@ -15,7 +15,11 @@ import 'utils/constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await Workmanager().initialize(notificationCallbackDispatcher);
+  try {
+    await Workmanager().initialize(notificationCallbackDispatcher);
+  } catch (e) {
+    debugPrint('[Main] WorkManager init failed: $e');
+  }
   runApp(const BorrowTrackerApp());
 }
 

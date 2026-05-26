@@ -14,6 +14,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
   late ReminderSettings _draft;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -23,8 +24,14 @@ class _NotificationSettingsScreenState
   }
 
   Future<void> _save() async {
-    final provider = context.read<NotificationProvider>();
-    await provider.updateSettings(_draft);
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    try {
+      final provider = context.read<NotificationProvider>();
+      await provider.updateSettings(_draft);
+    } catch (e) {
+      debugPrint('[NotifSettings] Save error: $e');
+    }
     if (mounted) Navigator.pop(context, true);
   }
 
