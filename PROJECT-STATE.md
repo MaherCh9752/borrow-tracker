@@ -13,6 +13,10 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **shared_preferences** (first-run tracking)
 - **fl_chart** (charts & graphs)
 - **connectivity_plus** (online/offline detection)
+- **pdf** (PDF generation)
+- **printing** (PDF preview, share, print)
+- **csv** (CSV generation)
+- **file_picker** (save location picker for CSV)
 
 ## Implemented Features
 
@@ -90,6 +94,22 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Offline-safe CRUD**: All save buttons (Add Entry, Edit Entry, Save Settings) use 500ms timeout + `try-catch-finally` — always navigate back even when offline (Firestore queues writes locally)
 - **Fallback caching**: Notification settings fall back to `SharedPreferences` if Firestore write fails
 
+### Export to PDF
+- **`PdfService`** generates landscape A4 PDF with `pdf` package
+- **Table columns**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
+- **Summary section**: Total entries, total borrowed/lent, pending/paid counts
+- **`PdfPreviewScreen`** shows live preview + share/print via `printing` package
+- Export button in **Dashboard AppBar** (exports all entries) and **All Records AppBar** (exports filtered entries)
+- Empty state handling when no entries exist
+
+### Export to CSV
+- **`CsvService`** generates CSV with `csv` package (proper quoting for edge cases)
+- **Headers**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
+- **ISO date format**: `YYYY-MM-DD` for spreadsheet compatibility
+- **`CsvPreviewScreen`** shows DataTable preview + save to chosen location via `file_picker`
+- Export button in **Dashboard AppBar** (exports all entries) and **All Records AppBar** (exports filtered entries)
+- User stays on preview screen after saving — can save multiple times to different locations
+
 ## Architecture
 
 ```
@@ -105,7 +125,9 @@ lib/
 │   ├── entry_service.dart             # Firestore CRUD
 │   ├── notification_service.dart      # flutter_local_notifications + WorkManager scheduling
 │   ├── notification_callback.dart     # Top-level WorkManager dispatcher (background isolate)
-│   └── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
+│   ├── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
+│   ├── pdf_service.dart               # PDF generation with table + summary
+│   └── csv_service.dart               # CSV generation with headers
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Entry state, filters, aggregates
@@ -117,7 +139,9 @@ lib/
 │   ├── all_records_screen.dart        # Full list with actions & filters
 │   ├── add_edit_entry_screen.dart     # Entry form (add & edit)
 │   ├── notification_settings_screen.dart # Reminder config UI
-│   └── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
+│   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
+│   ├── pdf_preview_screen.dart        # PDF preview + share/print
+│   └── csv_preview_screen.dart        # CSV preview + save to file
 ├── widgets/
 │   └── offline_indicator.dart         # Orange banner shown when offline
 └── utils/
@@ -133,5 +157,4 @@ lib/
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- Export to CSV
 - Security / biometric lock

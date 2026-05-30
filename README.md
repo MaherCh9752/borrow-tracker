@@ -16,6 +16,8 @@ Track borrowed and lent money, set repayment deadlines, get notifications, and v
 | Notifications | flutter_local_notifications + WorkManager |
 | First-run tracking | shared_preferences |
 | Offline detection | connectivity_plus |
+| PDF Export | pdf + printing |
+| CSV Export | csv + file_picker |
 
 ---
 
@@ -169,6 +171,43 @@ The app works fully offline — Firestore queues all changes locally and syncs w
 | **Cached reads** | Turn on airplane mode → navigate the app → all entries still load from local cache |
 
 > All save operations use a 500ms timeout — if Firestore doesn't respond, the write is still queued locally and the app navigates back immediately.
+
+### 9. Export to PDF
+
+Tap the **PDF icon** in the Dashboard or All Records AppBar.
+
+| What to try | Steps |
+|-------------|-------|
+| **Export all entries** | From Dashboard, tap the PDF icon → preview screen opens |
+| **Export filtered entries** | From All Records, apply filters → tap PDF icon → only filtered entries appear |
+| **Preview** | Full-page PDF preview with landscape A4 layout |
+| **Share** | Tap the share icon → share via email, messaging, etc. |
+| **Print** | Tap the print icon → send to a printer |
+
+**PDF includes:**
+- Header with app name and export date
+- Table with columns: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
+- Alternating row colors for readability
+- Summary section: total entries, borrowed/lent totals, pending/paid counts
+- Page numbers in footer
+
+### 10. Export to CSV
+
+Tap the **table icon** in the Dashboard or All Records AppBar.
+
+| What to try | Steps |
+|-------------|-------|
+| **Preview** | Tap the table icon → DataTable preview opens with all entries |
+| **Export all entries** | From Dashboard, tap the table icon → preview shows all entries |
+| **Export filtered entries** | From All Records, apply filters → tap table icon → only filtered entries appear |
+| **Save to file** | Tap the save icon (AppBar) → system file picker opens → choose folder → file saves |
+| **Save again** | After saving, you stay on the preview → tap save icon again to save to a different location |
+| **Overwrite** | Save to the same location → overwrites the existing file |
+
+**CSV includes:**
+- Headers: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
+- ISO date format (`YYYY-MM-DD`) for spreadsheet compatibility
+- Proper quoting for values containing commas
 
 ---
 

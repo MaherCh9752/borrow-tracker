@@ -8,7 +8,9 @@ import '../utils/constants.dart';
 import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
 import 'all_records_screen.dart';
+import 'csv_preview_screen.dart';
 import 'notification_settings_screen.dart';
+import 'pdf_preview_screen.dart';
 import 'statistics_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -51,6 +53,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text(AppConstants.appName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            tooltip: 'Export to CSV',
+            onPressed: entryProvider.entries.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CsvPreviewScreen(
+                          entries: entryProvider.entries,
+                        ),
+                      ),
+                    ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Export to PDF',
+            onPressed: entryProvider.entries.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PdfPreviewScreen(
+                          entries: entryProvider.entries,
+                        ),
+                      ),
+                    ),
+          ),
           IconButton(
             icon: const Icon(Icons.list),
             tooltip: 'All Records',

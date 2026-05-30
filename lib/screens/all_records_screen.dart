@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
 import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
+import 'csv_preview_screen.dart';
+import 'pdf_preview_screen.dart';
 
 class AllRecordsScreen extends StatefulWidget {
   const AllRecordsScreen({super.key});
@@ -41,6 +43,30 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
       appBar: AppBar(
         title: const Text('All Records'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            tooltip: 'Export to CSV',
+            onPressed: filtered.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CsvPreviewScreen(entries: filtered),
+                      ),
+                    ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            tooltip: 'Export to PDF',
+            onPressed: filtered.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PdfPreviewScreen(entries: filtered),
+                      ),
+                    ),
+          ),
           if (entryProvider.filtersActive)
             IconButton(
               icon: const Icon(Icons.filter_alt_off),
