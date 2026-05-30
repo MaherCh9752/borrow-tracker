@@ -26,12 +26,14 @@ class _NotificationSettingsScreenState
   Future<void> _save() async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
+
     try {
       final provider = context.read<NotificationProvider>();
-      await provider.updateSettings(_draft);
+      await provider.updateSettings(_draft).timeout(const Duration(milliseconds: 500));
     } catch (e) {
       debugPrint('[NotifSettings] Save error: $e');
     }
+
     if (mounted) Navigator.pop(context, true);
   }
 

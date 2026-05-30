@@ -74,45 +74,50 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSaving) return;
 
     setState(() => _isSaving = true);
 
-    final userId = context.read<AuthProvider>().user!.uid;
-    final entryProvider = context.read<EntryProvider>();
+    try {
+      final userId = context.read<AuthProvider>().user!.uid;
+      final entryProvider = context.read<EntryProvider>();
 
-    final entry = BorrowLend(
-      id: widget.entry?.id ?? '',
-      personName: _personNameController.text.trim(),
-      amount: double.parse(_amountController.text.trim()),
-      currency: _currency,
-      type: _type,
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-      createdAt: _createdAt,
-      deadline: _deadline,
-      status: _status,
-    );
-
-    bool success;
-    if (widget.isEditing) {
-      success = await entryProvider.editEntry(userId: userId, entry: entry);
-    } else {
-      success = await entryProvider.addEntry(userId: userId, entry: entry);
-    }
-
-    setState(() => _isSaving = false);
-
-    if (success && mounted) {
-      Navigator.pop(context, true);
-    } else if (!success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(entryProvider.error ?? 'Failed to save entry.'),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      final entry = BorrowLend(
+        id: widget.entry?.id ?? '',
+        personName: _personNameController.text.trim(),
+        amount: double.parse(_amountController.text.trim()),
+        currency: _currency,
+        type: _type,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+        createdAt: _createdAt,
+        deadline: _deadline,
+        status: _status,
       );
+
+      bool success;
+      if (widget.isEditing) {
+        success = await entryProvider
+            .editEntry(userId: userId, entry: entry)
+            .timeout(const Duration(milliseconds: 500));
+      } else {
+        success = await entryProvider
+            .addEntry(userId: userId, entry: entry)
+            .timeout(const Duration(milliseconds: 500));
+      }
+
+      if (success && mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      // Timeout or error — Firestore still queued the write locally.
+      debugPrint('[AddEditEntry] _save: $e');
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 

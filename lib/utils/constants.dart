@@ -6,4 +6,6 @@ class AppConstants {
   static const String notificationChannelName = 'Deadline Reminders';
   static const String notificationChannelDescription =
       'Reminders for upcoming and overdue deadlines';
+  static const String offlineMessage =
+      'You\'re offline. Changes will sync when reconnected.';
 }

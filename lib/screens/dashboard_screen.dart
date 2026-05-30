@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
 import '../providers/notification_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
 import 'all_records_screen.dart';
 import 'notification_settings_screen.dart';
@@ -91,12 +92,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: const Icon(Icons.add),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final userId = authProvider.user!.uid;
-          context.read<EntryProvider>().listenToEntries(userId);
-        },
-        child: _buildBody(theme, entryProvider, authProvider),
+      body: Column(
+        children: [
+          const OfflineIndicator(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                final userId = authProvider.user!.uid;
+                context.read<EntryProvider>().listenToEntries(userId);
+              },
+              child: _buildBody(theme, entryProvider, authProvider),
+            ),
+          ),
+        ],
       ),
     );
   }

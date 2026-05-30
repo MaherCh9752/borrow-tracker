@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
+import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
 
 class AllRecordsScreen extends StatefulWidget {
@@ -53,6 +54,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
       ),
       body: Column(
         children: [
+          const OfflineIndicator(),
           _buildSearchBar(theme),
           _buildFilterChips(theme, entryProvider),
           const Divider(height: 1),

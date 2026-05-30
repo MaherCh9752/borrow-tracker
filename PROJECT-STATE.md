@@ -12,6 +12,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **workmanager** (background delivery — `JobScheduler` on Android)
 - **shared_preferences** (first-run tracking)
 - **fl_chart** (charts & graphs)
+- **connectivity_plus** (online/offline detection)
 
 ## Implemented Features
 
@@ -79,6 +80,16 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Status chips with semantic colors
 - Responsive form layout
 
+### Offline Support
+- **Firestore persistence** enabled explicitly with unlimited cache size in `main.dart`
+- **`ConnectivityService`** wraps `connectivity_plus` to monitor network status via `onConnectivityChanged` stream
+- **`ConnectivityProvider`** exposes `isOnline` to the widget tree via Provider
+- **`OfflineIndicator`** widget: orange banner shown at the top of Dashboard and All Records screens when offline
+- Firestore automatically queues writes offline and syncs when reconnected
+- Data reads served from local cache when offline
+- **Offline-safe CRUD**: All save buttons (Add Entry, Edit Entry, Save Settings) use 500ms timeout + `try-catch-finally` — always navigate back even when offline (Firestore queues writes locally)
+- **Fallback caching**: Notification settings fall back to `SharedPreferences` if Firestore write fails
+
 ## Architecture
 
 ```
@@ -93,11 +104,13 @@ lib/
 │   ├── auth_service.dart              # Firebase Auth operations
 │   ├── entry_service.dart             # Firestore CRUD
 │   ├── notification_service.dart      # flutter_local_notifications + WorkManager scheduling
-│   └── notification_callback.dart     # Top-level WorkManager dispatcher (background isolate)
+│   ├── notification_callback.dart     # Top-level WorkManager dispatcher (background isolate)
+│   └── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Entry state, filters, aggregates
-│   └── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
+│   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
+│   └── connectivity_provider.dart     # Exposes isOnline to the widget tree
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
@@ -105,6 +118,8 @@ lib/
 │   ├── add_edit_entry_screen.dart     # Entry form (add & edit)
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   └── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
+├── widgets/
+│   └── offline_indicator.dart         # Orange banner shown when offline
 └── utils/
     └── constants.dart                 # App-wide constants
 ```
@@ -118,6 +133,5 @@ lib/
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- Offline support (Firestore persistence)
 - Export to CSV
 - Security / biometric lock

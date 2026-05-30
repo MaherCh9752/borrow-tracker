@@ -15,6 +15,7 @@ Track borrowed and lent money, set repayment deadlines, get notifications, and v
 | Charts | fl_chart |
 | Notifications | flutter_local_notifications + WorkManager |
 | First-run tracking | shared_preferences |
+| Offline detection | connectivity_plus |
 
 ---
 
@@ -153,6 +154,21 @@ Tap the **bell icon** in the dashboard AppBar to configure.
 5. Reopen the app → mark the entry as **Paid** → overdue reminders stop
 
 > On some Android OEMs (Xiaomi, Huawei, Samsung), disable battery optimization for the app in system settings for reliable WorkManager delivery.
+
+### 8. Offline Support
+
+The app works fully offline — Firestore queues all changes locally and syncs when reconnected.
+
+| What to try | Steps |
+|-------------|-------|
+| **Offline indicator** | Turn on airplane mode → orange banner appears at top of Dashboard and All Records |
+| **Add entry offline** | With airplane mode on, tap **+** → fill form → tap **Add Entry** → navigates back instantly |
+| **Edit entry offline** | With airplane mode on, tap **⋮** → **Edit** → change fields → save → navigates back |
+| **Save settings offline** | With airplane mode on, open Notification Settings → toggle → save → navigates back |
+| **Sync on reconnect** | Turn off airplane mode → all queued changes appear in Firestore automatically |
+| **Cached reads** | Turn on airplane mode → navigate the app → all entries still load from local cache |
+
+> All save operations use a 500ms timeout — if Firestore doesn't respond, the write is still queued locally and the app navigates back immediately.
 
 ---
 

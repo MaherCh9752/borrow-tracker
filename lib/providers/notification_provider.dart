@@ -68,7 +68,9 @@ class NotificationProvider extends ChangeNotifier {
         _settings = ReminderSettings.fromMap(
           Map<String, dynamic>.from(jsonDecode(json)),
         );
-        debugPrint('[Notifications] Loaded from cache: enabled=${_settings.notificationsEnabled}');
+        debugPrint(
+          '[Notifications] Loaded from cache: enabled=${_settings.notificationsEnabled}',
+        );
       }
     } catch (_) {}
 
@@ -89,7 +91,9 @@ class NotificationProvider extends ChangeNotifier {
             'cached_reminder_settings',
             jsonEncode(_settings.toMap()),
           );
-          debugPrint('[Notifications] Synced from Firestore: enabled=${_settings.notificationsEnabled}');
+          debugPrint(
+            '[Notifications] Synced from Firestore: enabled=${_settings.notificationsEnabled}',
+          );
         }
       }
     } catch (e) {
@@ -102,10 +106,8 @@ class NotificationProvider extends ChangeNotifier {
       await FirebaseFirestore.instance
           .collection(AppConstants.usersCollection)
           .doc(_userId)
-          .set(
-            {'reminderSettings': _settings.toMap()},
-            SetOptions(merge: true),
-          );
+          .set({'reminderSettings': _settings.toMap()}, SetOptions(merge: true))
+          .timeout(const Duration(milliseconds: 500));
 
       // Cache locally for offline/fallback
       final prefs = await SharedPreferences.getInstance();
@@ -113,7 +115,17 @@ class NotificationProvider extends ChangeNotifier {
         'cached_reminder_settings',
         jsonEncode(_settings.toMap()),
       );
-    } catch (_) {}
+    } catch (e) {
+      // On timeout, settings are still cached locally.
+      debugPrint('[Notifications] _saveSettings: $e');
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          'cached_reminder_settings',
+          jsonEncode(_settings.toMap()),
+        );
+      } catch (_) {}
+    }
   }
 
   Future<void> updateSettings(ReminderSettings settings) async {
@@ -122,9 +134,6 @@ class NotificationProvider extends ChangeNotifier {
     await _saveSettings();
     try {
       if (_settings.notificationsEnabled && _entries.isNotEmpty) {
-        // Replace rather than cancel-then-schedule. WorkManager's
-        // ExistingWorkPolicy.replace and zonedSchedule's same-ID reuse
-        // handle teardown of the old notification.
         await _scheduleAll(_entries);
       } else {
         await _notificationService.cancelAll();
@@ -224,23 +233,30 @@ class NotificationProvider extends ChangeNotifier {
 
       // Upcoming deadline reminder
       if (_settings.upcomingDeadlineReminders && deadline.isAfter(now)) {
-        final reminderDate =
-            deadline.subtract(Duration(days: _settings.reminderDaysBefore));
+        final reminderDate = deadline.subtract(
+          Duration(days: _settings.reminderDaysBefore),
+        );
         final base = _normalizeTime(reminderDate, now);
         final scheduledDate = _spreadTime(base, entry.id, 0);
         await _notificationService.scheduleOneTime(
           id: _notificationId(entry.id, 0),
           title: 'Upcoming Deadline',
-          body: '$name - $amountStr is due in ${_settings.reminderDaysBefore} days',
+          body:
+              '$name - $amountStr is due in ${_settings.reminderDaysBefore} days',
           date: scheduledDate,
         );
-        _pending.add(_PendingNotification(
-          id: _notificationId(entry.id, 0),
-          title: 'Upcoming Deadline',
-          body: '$name - $amountStr is due in ${_settings.reminderDaysBefore} days',
-          firedAt: scheduledDate,
-        ));
-        debugPrint('[Notifications] Upcoming: ${entry.personName} @ $scheduledDate');
+        _pending.add(
+          _PendingNotification(
+            id: _notificationId(entry.id, 0),
+            title: 'Upcoming Deadline',
+            body:
+                '$name - $amountStr is due in ${_settings.reminderDaysBefore} days',
+            firedAt: scheduledDate,
+          ),
+        );
+        debugPrint(
+          '[Notifications] Upcoming: ${entry.personName} @ $scheduledDate',
+        );
         scheduled++;
       }
 
@@ -254,13 +270,17 @@ class NotificationProvider extends ChangeNotifier {
           body: '$name - $amountStr is due today!',
           date: scheduledDate,
         );
-        _pending.add(_PendingNotification(
-          id: _notificationId(entry.id, 1),
-          title: 'Deadline Today',
-          body: '$name - $amountStr is due today!',
-          firedAt: scheduledDate,
-        ));
-        debugPrint('[Notifications] Due today: ${entry.personName} @ $scheduledDate');
+        _pending.add(
+          _PendingNotification(
+            id: _notificationId(entry.id, 1),
+            title: 'Deadline Today',
+            body: '$name - $amountStr is due today!',
+            firedAt: scheduledDate,
+          ),
+        );
+        debugPrint(
+          '[Notifications] Due today: ${entry.personName} @ $scheduledDate',
+        );
         scheduled++;
       }
 
@@ -272,38 +292,52 @@ class NotificationProvider extends ChangeNotifier {
           await _notificationService.scheduleDaily(
             id: _notificationId(entry.id, 2),
             title: 'Overdue Reminder',
-            body: '$name - $amountStr was due on '
+            body:
+                '$name - $amountStr was due on '
                 '${deadline.day}/${deadline.month}/${deadline.year}',
             time: scheduledDate,
           );
-          _pending.add(_PendingNotification(
-            id: _notificationId(entry.id, 2),
-            title: 'Overdue Reminder',
-            body: '$name - $amountStr was due on '
-                '${deadline.day}/${deadline.month}/${deadline.year}',
-            firedAt: scheduledDate,
-          ));
-          debugPrint('[Notifications] Overdue daily: ${entry.personName} @ $scheduledDate');
+          _pending.add(
+            _PendingNotification(
+              id: _notificationId(entry.id, 2),
+              title: 'Overdue Reminder',
+              body:
+                  '$name - $amountStr was due on '
+                  '${deadline.day}/${deadline.month}/${deadline.year}',
+              firedAt: scheduledDate,
+            ),
+          );
+          debugPrint(
+            '[Notifications] Overdue daily: ${entry.personName} @ $scheduledDate',
+          );
           scheduled++;
         } else {
-          final base =
-              _normalizeTime(now, now).add(const Duration(minutes: 30));
+          final base = _normalizeTime(
+            now,
+            now,
+          ).add(const Duration(minutes: 30));
           final scheduledDate = _spreadTime(base, entry.id, 2);
           await _notificationService.scheduleOneTime(
             id: _notificationId(entry.id, 2),
             title: 'Overdue',
-            body: '$name - $amountStr was due on '
+            body:
+                '$name - $amountStr was due on '
                 '${deadline.day}/${deadline.month}/${deadline.year}',
             date: scheduledDate,
           );
-          _pending.add(_PendingNotification(
-            id: _notificationId(entry.id, 2),
-            title: 'Overdue',
-            body: '$name - $amountStr was due on '
-                '${deadline.day}/${deadline.month}/${deadline.year}',
-            firedAt: scheduledDate,
-          ));
-          debugPrint('[Notifications] Overdue once: ${entry.personName} @ $scheduledDate');
+          _pending.add(
+            _PendingNotification(
+              id: _notificationId(entry.id, 2),
+              title: 'Overdue',
+              body:
+                  '$name - $amountStr was due on '
+                  '${deadline.day}/${deadline.month}/${deadline.year}',
+              firedAt: scheduledDate,
+            ),
+          );
+          debugPrint(
+            '[Notifications] Overdue once: ${entry.personName} @ $scheduledDate',
+          );
           scheduled++;
         }
       }
@@ -323,8 +357,11 @@ class NotificationProvider extends ChangeNotifier {
 
   DateTime _normalizeTime(DateTime date, DateTime now) {
     final scheduled = DateTime(
-      date.year, date.month, date.day,
-      _settings.reminderHour, _settings.reminderMinute,
+      date.year,
+      date.month,
+      date.day,
+      _settings.reminderHour,
+      _settings.reminderMinute,
     );
     final past = now.subtract(const Duration(seconds: 10));
     if (!scheduled.isAfter(past)) {
