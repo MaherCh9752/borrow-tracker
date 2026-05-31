@@ -17,6 +17,8 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **printing** (PDF preview, share, print)
 - **csv** (CSV generation)
 - **file_picker** (save location picker for CSV)
+- **local_auth** (biometric authentication)
+- **flutter_secure_storage** (encrypted preference storage)
 
 ## Implemented Features
 
@@ -110,6 +112,19 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Export button in **Dashboard AppBar** (exports all entries) and **All Records AppBar** (exports filtered entries)
 - User stays on preview screen after saving — can save multiple times to different locations
 
+### Biometric App Lock (Optional)
+- **`BiometricService`** wraps `local_auth` — checks hardware, enrollment, prompts biometric auth
+- **`SecurityProvider`** manages app lock state, persists preference in `flutter_secure_storage`
+- **`SecuritySettingsScreen`** — toggle app lock, shows device compatibility status
+- **Lock gate in `main.dart`** — `_BiometricLockScreen` prompts authentication on app launch
+- **`_AppLifecycleObserver`** — sits below `MultiProvider`, detects app pause/resume to lock
+- **Pause-based locking** — sets `_pendingLock` on pause; only locks on resume if pending (avoids biometric dialog loop)
+- **`_isAuthenticating` flag** — prevents `onAppPaused()` from setting pending lock during biometric prompt
+- **Auto-disable** — if user removes biometrics after enabling lock, preference is cleared
+- **Fallback** — `biometricOnly: false` allows device PIN/pattern as fallback
+- **Android**: `USE_BIOMETRIC` permission + `FlutterFragmentActivity` (required by `local_auth`)
+- **iOS**: `NSFaceIDUsageDescription` in Info.plist
+
 ## Architecture
 
 ```
@@ -127,12 +142,14 @@ lib/
 │   ├── notification_callback.dart     # Top-level WorkManager dispatcher (background isolate)
 │   ├── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
 │   ├── pdf_service.dart               # PDF generation with table + summary
-│   └── csv_service.dart               # CSV generation with headers
+│   ├── csv_service.dart               # CSV generation with headers
+│   └── biometric_service.dart         # Biometric authentication via local_auth
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Entry state, filters, aggregates
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
-│   └── connectivity_provider.dart     # Exposes isOnline to the widget tree
+│   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
+│   └── security_provider.dart         # App lock state, enable/disable, biometric auth
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
@@ -141,7 +158,8 @@ lib/
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
 │   ├── pdf_preview_screen.dart        # PDF preview + share/print
-│   └── csv_preview_screen.dart        # CSV preview + save to file
+│   ├── csv_preview_screen.dart        # CSV preview + save to file
+│   └── security_settings_screen.dart  # Biometric app lock toggle + device status
 ├── widgets/
 │   └── offline_indicator.dart         # Orange banner shown when offline
 └── utils/
@@ -157,4 +175,4 @@ lib/
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- Security / biometric lock
+- None (all planned features implemented)

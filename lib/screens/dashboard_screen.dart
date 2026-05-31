@@ -11,6 +11,7 @@ import 'all_records_screen.dart';
 import 'csv_preview_screen.dart';
 import 'notification_settings_screen.dart';
 import 'pdf_preview_screen.dart';
+import 'security_settings_screen.dart';
 import 'statistics_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -104,6 +105,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               context,
               MaterialPageRoute(
                   builder: (_) => const NotificationSettingsScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Security',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
             ),
           ),
           IconButton(

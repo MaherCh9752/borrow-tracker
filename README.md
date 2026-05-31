@@ -18,6 +18,7 @@ Track borrowed and lent money, set repayment deadlines, get notifications, and v
 | Offline detection | connectivity_plus |
 | PDF Export | pdf + printing |
 | CSV Export | csv + file_picker |
+| Biometric Lock | local_auth + flutter_secure_storage |
 
 ---
 
@@ -208,6 +209,23 @@ Tap the **table icon** in the Dashboard or All Records AppBar.
 - Headers: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
 - ISO date format (`YYYY-MM-DD`) for spreadsheet compatibility
 - Proper quoting for values containing commas
+
+### 11. Biometric App Lock (Optional)
+
+Tap the **settings icon** (gear) in the Dashboard AppBar.
+
+| What to try | Steps |
+|-------------|-------|
+| **Enable lock** | Tap the toggle → biometric prompt appears → authenticate → lock is active |
+| **Disable lock** | Tap the toggle → biometric prompt → authenticate → lock is removed |
+| **App launch** | With lock enabled, kill and reopen the app → biometric prompt appears |
+| **Resume from background** | With lock enabled, switch to another app → return → lock screen appears |
+| **No hardware** | On emulator or device without biometrics → toggle shows "Not available" message |
+| **No enrollment** | Device has biometrics but none enrolled → toggle shows "No biometrics enrolled" |
+| **Cancel** | Dismiss the biometric prompt → stays locked, can retry with Unlock button |
+| **Fallback** | Use device PIN/pattern if biometrics fail (enabled via `biometricOnly: false`) |
+
+> Android requires `FlutterFragmentActivity` (not `FlutterActivity`) for `local_auth`. Lock triggers on **pause**, not resume, to avoid biometric dialog loops.
 
 ---
 
