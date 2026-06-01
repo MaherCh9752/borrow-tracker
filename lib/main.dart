@@ -10,9 +10,11 @@ import 'providers/connectivity_provider.dart';
 import 'providers/entry_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/security_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'services/notification_callback.dart';
+import 'theme/app_theme.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -40,35 +42,24 @@ class BorrowTrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EntryProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()..initialize()),
       ],
-      child: MaterialApp(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.indigo,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        home: const _AppLifecycleObserver(child: FirstRunGate()),
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: AppConstants.appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: themeProvider.themeMode,
+            home: const _AppLifecycleObserver(child: FirstRunGate()),
+          );
+        },
       ),
     );
   }
@@ -258,7 +249,7 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Authentication failed. Tap lock icon to retry.'),
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: Theme.of(context).colorScheme.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -290,7 +281,7 @@ class _BiometricLockScreenState extends State<_BiometricLockScreen> {
             Text(
               'Authenticate to unlock Borrow Tracker',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 32),

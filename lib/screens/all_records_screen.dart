@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
+import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
 import 'csv_preview_screen.dart';
@@ -242,9 +243,6 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -263,7 +261,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
               (option) => ListTile(
                 title: Text(labelOf(option)),
                 trailing: selected == option
-                    ? const Icon(Icons.check, color: Colors.indigo)
+                    ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary)
                     : null,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -284,7 +282,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
+            Icon(Icons.receipt_long, size: 64, color: theme.colorScheme.outline),
             const SizedBox(height: 16),
             Text('No entries yet.', style: theme.textTheme.titleMedium),
           ],
@@ -295,7 +293,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+          Icon(Icons.search_off, size: 64, color: theme.colorScheme.outline),
           const SizedBox(height: 16),
           Text(
             'No entries match your filters.',
@@ -331,21 +329,22 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return ActionChip(
       label: Text(
         active ? '$label: $activeLabel' : label,
         style: TextStyle(
-          color: active ? Colors.white : null,
+          color: active ? colorScheme.onPrimary : null,
           fontSize: 13,
         ),
       ),
       backgroundColor:
-          active ? theme.colorScheme.primary : null,
+          active ? colorScheme.primary : null,
       onPressed: onTap,
       avatar: Icon(
         active ? Icons.filter_alt : Icons.filter_list,
         size: 18,
-        color: active ? Colors.white : null,
+        color: active ? colorScheme.onPrimary : null,
       ),
     );
   }
@@ -359,8 +358,9 @@ class _EntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isBorrow = entry.type == EntryType.borrow;
-    final amountColor = isBorrow ? Colors.orange.shade700 : Colors.teal.shade600;
+    final amountColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
     final sign = isBorrow ? '-' : '+';
 
     return Card(
@@ -392,11 +392,14 @@ class _EntryCard extends StatelessWidget {
             Row(
               children: [
                 if (entry.deadline != null) ...[
-                  Icon(Icons.event, size: 14, color: Colors.grey[600]),
+                  Icon(Icons.event, size: 14, color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text(
                     _formatDate(entry.deadline!),
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(width: 12),
                 ],
@@ -464,7 +467,8 @@ class _EntryCard extends StatelessWidget {
                   child: const Text('Cancel')),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                child: Text('Delete',
+                    style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
               ),
             ],
           ),
@@ -489,20 +493,14 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    String label;
+    final brightness = Theme.of(context).brightness;
+    final color = AppColors.forStatus(status, brightness);
 
-    switch (status) {
-      case EntryStatus.pending:
-        color = Colors.orange;
-        label = 'Pending';
-      case EntryStatus.paid:
-        color = Colors.green;
-        label = 'Paid';
-      case EntryStatus.partial:
-        color = Colors.blue;
-        label = 'Partial';
-    }
+    final label = switch (status) {
+      EntryStatus.pending => 'Pending',
+      EntryStatus.paid => 'Paid',
+      EntryStatus.partial => 'Partial',
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

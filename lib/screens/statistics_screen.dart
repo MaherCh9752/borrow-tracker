@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../providers/entry_provider.dart';
+import '../theme/app_theme.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -19,7 +20,7 @@ class StatisticsScreen extends StatelessWidget {
               child: Text(
                 'Add some entries to see statistics.',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[500],
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             )
@@ -102,6 +103,10 @@ class _MonthlyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final labelColor = colorScheme.onSurface;
+
     final monthMap = <String, _MonthTotal>{};
     for (final entry in entries) {
       final key = '${entry.createdAt.year}-'
@@ -161,7 +166,7 @@ class _MonthlyBarChart extends StatelessWidget {
                   barRods: [
                     BarChartRodData(
                       toY: t.borrowed,
-                      color: Colors.orange.shade700,
+                      color: AppColors.chartBorrow,
                       width: 10,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(4),
@@ -170,7 +175,7 @@ class _MonthlyBarChart extends StatelessWidget {
                     ),
                     BarChartRodData(
                       toY: t.lent,
-                      color: Colors.teal.shade600,
+                      color: AppColors.chartLend,
                       width: 10,
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(4),
@@ -198,7 +203,10 @@ class _MonthlyBarChart extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           _monthAbbr(totals[idx].month),
-                          style: const TextStyle(fontSize: 10),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: labelColor,
+                          ),
                         ),
                       );
                     },
@@ -213,7 +221,10 @@ class _MonthlyBarChart extends StatelessWidget {
                       if (value == 0) return const SizedBox();
                       return Text(
                         '\$${value.toInt()}',
-                        style: const TextStyle(fontSize: 10),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: labelColor,
+                        ),
                       );
                     },
                   ),
@@ -230,6 +241,10 @@ class _MonthlyBarChart extends StatelessWidget {
                 show: true,
                 drawVerticalLine: false,
                 horizontalInterval: maxAmount / 2,
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  strokeWidth: 0.5,
+                ),
               ),
             ),
           ),
@@ -238,9 +253,9 @@ class _MonthlyBarChart extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _LegendDot(color: Colors.orange.shade700, label: 'Borrowed'),
+            _LegendDot(color: AppColors.chartBorrow, label: 'Borrowed'),
             const SizedBox(width: 20),
-            _LegendDot(color: Colors.teal.shade600, label: 'Lent'),
+            _LegendDot(color: AppColors.chartLend, label: 'Lent'),
           ],
         ),
       ],
@@ -280,7 +295,7 @@ class _PaidPieChart extends StatelessWidget {
               sections: [
                 PieChartSectionData(
                   value: paid,
-                  color: Colors.green,
+                  color: AppColors.chartPaid,
                   title: '$paidPct%',
                   radius: 50,
                   titleStyle: const TextStyle(
@@ -291,7 +306,7 @@ class _PaidPieChart extends StatelessWidget {
                 ),
                 PieChartSectionData(
                   value: unpaid,
-                  color: Colors.orange.shade700,
+                  color: AppColors.chartUnpaid,
                   title: '$unpaidPct%',
                   radius: 50,
                   titleStyle: const TextStyle(
@@ -312,12 +327,12 @@ class _PaidPieChart extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _LegendDot(
-              color: Colors.green,
+              color: AppColors.chartPaid,
               label: 'Paid (\$${paid.toStringAsFixed(0)})',
             ),
             const SizedBox(height: 10),
             _LegendDot(
-              color: Colors.orange.shade700,
+              color: AppColors.chartUnpaid,
               label: 'Unpaid (\$${unpaid.toStringAsFixed(0)})',
             ),
           ],
@@ -334,6 +349,10 @@ class _DebtLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final labelColor = colorScheme.onSurface;
+
     final sorted = List<BorrowLend>.from(entries)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
@@ -378,12 +397,12 @@ class _DebtLineChart extends StatelessWidget {
             spots: spots,
             isCurved: true,
             preventCurveOverShooting: true,
-            color: Colors.indigo,
+            color: AppColors.chartLine,
             barWidth: 3,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: Colors.indigo.withValues(alpha: 0.1),
+              color: AppColors.chartLine.withValues(alpha: 0.1),
             ),
           ),
         ],
@@ -403,7 +422,10 @@ class _DebtLineChart extends StatelessWidget {
                 }
                 return Text(
                   '\$${value.toInt()}',
-                  style: const TextStyle(fontSize: 10),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: labelColor,
+                  ),
                 );
               },
             ),
@@ -420,6 +442,10 @@ class _DebtLineChart extends StatelessWidget {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: yInterval,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            strokeWidth: 0.5,
+          ),
         ),
       ),
     );

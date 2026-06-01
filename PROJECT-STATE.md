@@ -42,6 +42,9 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Stats cards: Pending count, Upcoming deadlines (next 7 days)
 - Recent entries list (last 5) with status chip and relative time
 - Empty state, pull-to-refresh, FAB for adding entries
+- **Redesigned AppBar**: centered logo icon (`Icons.account_balance_wallet`) + "Borrow Tracker" title, hamburger menu (`PopupMenuButton`) on the left with all navigation items, logout button on the right
+- **Hamburger menu items**: All Records, Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
+- **`_MenuTile`** widget: consistent icon + label rows in the popup menu
 
 ### All Records & Search / Filters
 - Scrollable list with popup menu (edit / mark paid / mark partial / delete)
@@ -68,10 +71,10 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **`_fireDue`** concurrency guard (`_firingNow`) prevents race between overlapping timer ticks.
 - WorkManager tasks are cancelled after in-app delivery to prevent duplicates.
 - **First-run prompt**: Shown once at app boot (before login) via `SharedPreferences` flag. "Enable" requests OS notification + exact-alarm permissions. The flag `notification_enabled_from_boot` auto-enables Firestore settings after login, then self-destructs to never override the user's choice.
-- **Settings screen** (bell icon on dashboard): master toggle, individual toggles, time picker, day-before frequency, save to Firestore.
+- **Settings screen** (hamburger menu → Notifications): master toggle, individual toggles, time picker, day-before frequency, save to Firestore.
 
 ### Statistics / Charts
-- **Three chart types** on a dedicated Statistics screen (bar chart icon in dashboard AppBar)
+- **Three chart types** on a dedicated Statistics screen (hamburger menu → Statistics)
 - **Monthly Totals**: Grouped bar chart showing borrowed (orange) vs lent (teal) per month
 - **Payment Status**: Pie chart splitting total amount into paid (green) vs unpaid (orange) with percentages
 - **Debt History**: Curved line chart tracking net cumulative debt over time (borrow adds, lent subtracts)
@@ -80,11 +83,13 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Powered by `fl_chart` 0.69+
 
 ### Material 3 UI
-- `useMaterial3: true`, `ColorScheme.fromSeed`
+- `useMaterial3: true`, `ColorScheme.fromSeed` (indigo for light, indigo-200 for dark)
 - Segmented buttons, outlined buttons, filled buttons, snack bars, floating action button
 - Bottom sheet for filter selection
-- Status chips with semantic colors
+- Status chips with semantic colors (dual-variant per theme)
 - Responsive form layout
+- Consistent 10-12px border radius across all components
+- Themed card borders, dialog shapes, snackbar shapes, bottom sheet shapes
 
 ### Offline Support
 - **Firestore persistence** enabled explicitly with unlimited cache size in `main.dart`
@@ -101,7 +106,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Table columns**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
 - **Summary section**: Total entries, total borrowed/lent, pending/paid counts
 - **`PdfPreviewScreen`** shows live preview + share/print via `printing` package
-- Export button in **Dashboard AppBar** (exports all entries) and **All Records AppBar** (exports filtered entries)
+- Export via **Dashboard hamburger menu** (exports all entries) and **All Records AppBar** (exports filtered entries)
 - Empty state handling when no entries exist
 
 ### Export to CSV
@@ -109,13 +114,13 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Headers**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
 - **ISO date format**: `YYYY-MM-DD` for spreadsheet compatibility
 - **`CsvPreviewScreen`** shows DataTable preview + save to chosen location via `file_picker`
-- Export button in **Dashboard AppBar** (exports all entries) and **All Records AppBar** (exports filtered entries)
+- Export via **Dashboard hamburger menu** (exports all entries) and **All Records AppBar** (exports filtered entries)
 - User stays on preview screen after saving — can save multiple times to different locations
 
 ### Biometric App Lock (Optional)
 - **`BiometricService`** wraps `local_auth` — checks hardware, enrollment, prompts biometric auth
 - **`SecurityProvider`** manages app lock state, persists preference in `flutter_secure_storage`
-- **`SecuritySettingsScreen`** — toggle app lock, shows device compatibility status
+- **Security**: Hamburger menu → Security — toggle app lock, shows device compatibility status
 - **Lock gate in `main.dart`** — `_BiometricLockScreen` prompts authentication on app launch
 - **`_AppLifecycleObserver`** — sits below `MultiProvider`, detects app pause/resume to lock
 - **Pause-based locking** — sets `_pendingLock` on pause; only locks on resume if pending (avoids biometric dialog loop)
@@ -124,6 +129,21 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Fallback** — `biometricOnly: false` allows device PIN/pattern as fallback
 - **Android**: `USE_BIOMETRIC` permission + `FlutterFragmentActivity` (required by `local_auth`)
 - **iOS**: `NSFaceIDUsageDescription` in Info.plist
+
+### Dark Mode & Theme System
+- **`ThemeProvider`** manages `ThemeMode` (light / dark / system) with `SharedPreferences` persistence
+- **`AppTheme`** central accessor: `AppTheme.light` / `AppTheme.dark`
+- **`AppColors`** semantic color tokens: `borrowColor`, `lendColor`, `paidLight/Dark`, `pendingLight/Dark`, `partialLight/Dark`, `overdueLight/Dark`, chart colors, stats colors, offline banner
+- **Light theme**: `ColorScheme.fromSeed(seedColor: Color(0xFF3F51B5), brightness: light)`
+- **Dark theme**: `ColorScheme.fromSeed(seedColor: Color(0xFF7986CB), brightness: dark)`
+- **Theme-aware status colors**: `AppColors.forStatus(status, brightness)` returns appropriate variant per theme
+- **All screens converted**: Zero hardcoded `Colors.*` in UI code (only `AppColors.*` tokens and intentional `Colors.white` on dark backgrounds)
+- **Material 3 component themes**: `CardThemeData`, `InputDecorationTheme`, `ElevatedButtonThemeData`, `DialogThemeData`, `SnackBarThemeData`, `BottomSheetThemeData`, `ChipThemeData`, `SwitchThemeData`, `PopupMenuThemeData`
+- **Chart readability**: All `fl_chart` axis labels and grid lines use `theme.colorScheme.onSurface` / `outlineVariant` for contrast
+- **`AppearanceSettingsScreen`**: Hamburger menu → Appearance — System / Light / Dark radio selection with check indicator and current theme label
+- **Persistence**: Saved as `'theme_mode'` key in `SharedPreferences`, loaded on app boot via `ThemeProvider.initialize()`
+- **Default**: `ThemeMode.system` — follows device dark/light setting
+- **Animations**: Flutter's built-in `themeAnimationDuration` handles smooth transitions
 
 ## Architecture
 
@@ -135,6 +155,10 @@ lib/
 │   ├── user_model.dart                # User data model
 │   ├── borrow_lend.dart               # Borrow/lend entry model + enums
 │   └── reminder_settings.dart         # Notification settings model
+├── theme/
+│   ├── app_theme.dart                 # AppTheme accessor + AppColors semantic tokens
+│   ├── light_theme.dart               # ThemeData for light mode
+│   └── dark_theme.dart                # ThemeData for dark mode
 ├── services/
 │   ├── auth_service.dart              # Firebase Auth operations
 │   ├── entry_service.dart             # Firestore CRUD
@@ -149,7 +173,8 @@ lib/
 │   ├── entry_provider.dart            # Entry state, filters, aggregates
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
-│   └── security_provider.dart         # App lock state, enable/disable, biometric auth
+│   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
+│   └── theme_provider.dart            # ThemeMode persistence, cycle, current label
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
@@ -157,9 +182,11 @@ lib/
 │   ├── add_edit_entry_screen.dart     # Entry form (add & edit)
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
+│   ├── appearance_settings_screen.dart # Theme selection (System / Light / Dark)
 │   ├── pdf_preview_screen.dart        # PDF preview + share/print
 │   ├── csv_preview_screen.dart        # CSV preview + save to file
-│   └── security_settings_screen.dart  # Biometric app lock toggle + device status
+│   ├── security_settings_screen.dart  # Biometric app lock toggle + device status
+│   └── home_screen.dart               # Simple welcome screen (unused in nav flow)
 ├── widgets/
 │   └── offline_indicator.dart         # Orange banner shown when offline
 └── utils/
@@ -171,7 +198,7 @@ lib/
 - Null safety, `copyWith` / `toMap` / `fromMap` everywhere
 - `coreLibraryDesugaring` enabled for `java.time` API on older Android
 - `USE_EXACT_ALARM` + `SCHEDULE_EXACT_ALARM` + `POST_NOTIFICATIONS` + `RECEIVE_BOOT_COMPLETED` declared in `AndroidManifest.xml`
-- `shared_preferences` for first-run prompt flag
+- `shared_preferences` for first-run tracking, theme mode persistence
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending

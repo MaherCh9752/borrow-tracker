@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/connectivity_provider.dart';
+import '../theme/app_theme.dart';
 
 /// A dismissible banner that appears when the device is offline.
 /// Uses [ConnectivityProvider] to reactively show/hide.
@@ -14,7 +15,7 @@ class OfflineIndicator extends StatelessWidget {
     if (isOnline) return const SizedBox.shrink();
 
     return Material(
-      color: Colors.orange.shade700,
+      color: AppColors.offlineBanner,
       child: SafeArea(
         bottom: false,
         child: Padding(

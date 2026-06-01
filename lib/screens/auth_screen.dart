@@ -57,10 +57,11 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _showError(String message) {
+    final theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red.shade700,
+        backgroundColor: theme.colorScheme.error,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -102,7 +103,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Password reset email sent.'),
-              backgroundColor: Colors.green.shade700,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -115,6 +116,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -129,22 +133,22 @@ class _AuthScreenState extends State<AuthScreen> {
                   Icon(
                     Icons.account_balance_wallet,
                     size: 80,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Borrow Tracker',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _isLogin ? 'Sign in to continue' : 'Create a new account',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -154,7 +158,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Display Name',
                         prefixIcon: Icon(Icons.person),
-                        border: OutlineInputBorder(),
                       ),
                       textCapitalization: TextCapitalization.words,
                       validator: (value) {
@@ -170,11 +173,9 @@ class _AuthScreenState extends State<AuthScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.emailAddress,
-                    textInputAction:
-                        _isLogin ? TextInputAction.next : TextInputAction.next,
+                    textInputAction: TextInputAction.next,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Please enter your email.';
@@ -191,7 +192,6 @@ class _AuthScreenState extends State<AuthScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock),
-                      border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
@@ -204,8 +204,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     obscureText: _obscurePassword,
-                    textInputAction:
-                        _isLogin ? TextInputAction.done : TextInputAction.done,
+                    textInputAction: TextInputAction.done,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password.';

@@ -4,10 +4,12 @@ import '../models/borrow_lend.dart';
 import '../providers/auth_provider.dart';
 import '../providers/entry_provider.dart';
 import '../providers/notification_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
 import 'all_records_screen.dart';
+import 'appearance_settings_screen.dart';
 import 'csv_preview_screen.dart';
 import 'notification_settings_screen.dart';
 import 'pdf_preview_screen.dart';
@@ -52,69 +54,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        leading: PopupMenuButton<_MenuAction>(
+          icon: const Icon(Icons.menu),
+          onSelected: (action) => _handleMenuAction(context, action, entryProvider),
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: _MenuAction.allRecords,
+              child: _MenuTile(icon: Icons.list, title: 'All Records'),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.statistics,
+              child: _MenuTile(icon: Icons.bar_chart, title: 'Statistics'),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: _MenuAction.exportCsv,
+              child: _MenuTile(icon: Icons.table_chart, title: 'Export to CSV'),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.exportPdf,
+              child: _MenuTile(icon: Icons.picture_as_pdf, title: 'Export to PDF'),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: _MenuAction.notifications,
+              child: _MenuTile(
+                  icon: Icons.notifications_outlined, title: 'Notifications'),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.appearance,
+              child: _MenuTile(
+                  icon: Icons.palette_outlined, title: 'Appearance'),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.security,
+              child: _MenuTile(icon: Icons.shield_outlined, title: 'Security'),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.account_balance_wallet,
+              color: theme.colorScheme.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppConstants.appName,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.table_chart),
-            tooltip: 'Export to CSV',
-            onPressed: entryProvider.entries.isEmpty
-                ? null
-                : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CsvPreviewScreen(
-                          entries: entryProvider.entries,
-                        ),
-                      ),
-                    ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            tooltip: 'Export to PDF',
-            onPressed: entryProvider.entries.isEmpty
-                ? null
-                : () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PdfPreviewScreen(
-                          entries: entryProvider.entries,
-                        ),
-                      ),
-                    ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.list),
-            tooltip: 'All Records',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AllRecordsScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            tooltip: 'Statistics',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const StatisticsScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifications',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const NotificationSettingsScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Security',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
-            ),
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',
@@ -163,7 +159,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 8),
             Text('Something went wrong', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
-            Text(entryProvider.error!, style: theme.textTheme.bodySmall),
+            Text(entryProvider.error!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                )),
           ],
         ),
       );
@@ -203,7 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title: 'Total Borrowed',
             amount: provider.totalBorrowed,
             icon: Icons.arrow_downward,
-            color: Colors.orange.shade700,
+            color: AppColors.borrowColor,
             theme: theme,
           ),
         ),
@@ -213,7 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title: 'Total Lent',
             amount: provider.totalLent,
             icon: Icons.arrow_upward,
-            color: Colors.teal.shade600,
+            color: AppColors.lendColor,
             theme: theme,
           ),
         ),
@@ -229,7 +228,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Pending',
             count: provider.pendingCount,
             icon: Icons.hourglass_empty,
-            color: Colors.indigo,
+            color: AppColors.statsPending,
             theme: theme,
           ),
         ),
@@ -239,7 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'Deadlines (7d)',
             count: provider.upcomingDeadlineCount,
             icon: Icons.event,
-            color: Colors.purple,
+            color: AppColors.statsDeadline,
             theme: theme,
           ),
         ),
@@ -280,7 +279,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   'No entries yet.\nTap + to add your first one.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[500],
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -288,6 +287,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
           )
         else
           ...recent.map((entry) => _RecentEntryTile(entry: entry, theme: theme)),
+      ],
+    );
+  }
+
+  void _handleMenuAction(
+    BuildContext context,
+    _MenuAction action,
+    EntryProvider entryProvider,
+  ) {
+    switch (action) {
+      case _MenuAction.allRecords:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const AllRecordsScreen()));
+        break;
+      case _MenuAction.statistics:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+        break;
+      case _MenuAction.exportCsv:
+        if (entryProvider.entries.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CsvPreviewScreen(entries: entryProvider.entries),
+            ),
+          );
+        }
+        break;
+      case _MenuAction.exportPdf:
+        if (entryProvider.entries.isNotEmpty) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PdfPreviewScreen(entries: entryProvider.entries),
+            ),
+          );
+        }
+        break;
+      case _MenuAction.notifications:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()));
+        break;
+      case _MenuAction.appearance:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const AppearanceSettingsScreen()));
+        break;
+      case _MenuAction.security:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()));
+        break;
+    }
+  }
+}
+
+enum _MenuAction {
+  allRecords,
+  statistics,
+  exportCsv,
+  exportPdf,
+  notifications,
+  appearance,
+  security,
+}
+
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+
+  const _MenuTile({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 22),
+        const SizedBox(width: 12),
+        Text(title),
       ],
     );
   }
@@ -391,7 +467,7 @@ class _RecentEntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isBorrow = entry.type == EntryType.borrow;
-    final entryColor = isBorrow ? Colors.orange.shade700 : Colors.teal.shade600;
+    final entryColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
     final sign = isBorrow ? '-' : '+';
 
     return Card(
@@ -409,7 +485,10 @@ class _RecentEntryTile extends StatelessWidget {
           entry.personName,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        subtitle: Text(_daysAgo(entry.createdAt)),
+        subtitle: Text(
+          _daysAgo(entry.createdAt),
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+        ),
         trailing: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -444,20 +523,14 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color color;
-    String label;
+    final brightness = Theme.of(context).brightness;
+    final color = AppColors.forStatus(status, brightness);
 
-    switch (status) {
-      case EntryStatus.pending:
-        color = Colors.orange;
-        label = 'Pending';
-      case EntryStatus.paid:
-        color = Colors.green;
-        label = 'Paid';
-      case EntryStatus.partial:
-        color = Colors.blue;
-        label = 'Partial';
-    }
+    final label = switch (status) {
+      EntryStatus.pending => 'Pending',
+      EntryStatus.paid => 'Paid',
+      EntryStatus.partial => 'Partial',
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

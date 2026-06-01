@@ -353,7 +353,7 @@ class _DateRow extends StatelessWidget {
           date != null
               ? '${date!.day}/${date!.month}/${date!.year}'
               : (hint ?? 'Not set'),
-          style: TextStyle(color: date != null ? null : Colors.grey[500]),
+          style: TextStyle(color: date != null ? null : Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ),
     );

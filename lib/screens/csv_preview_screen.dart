@@ -70,7 +70,7 @@ class _CsvPreviewScreenState extends State<CsvPreviewScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Saved to $result'),
-            backgroundColor: Colors.green.shade700,
+              backgroundColor: Theme.of(context).colorScheme.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -80,7 +80,7 @@ class _CsvPreviewScreenState extends State<CsvPreviewScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to save: $e'),
-            backgroundColor: Colors.red.shade700,
+              backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),
         );

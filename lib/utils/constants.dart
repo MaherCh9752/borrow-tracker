@@ -9,4 +9,5 @@ class AppConstants {
   static const String offlineMessage =
       'You\'re offline. Changes will sync when reconnected.';
   static const String secureStorageAppLockKey = 'app_lock_enabled';
+  static const String themePreferenceKey = 'theme_mode';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/security_provider.dart';
+import '../theme/app_theme.dart';
 
 /// Settings screen for configuring biometric app lock.
 class SecuritySettingsScreen extends StatefulWidget {
@@ -41,7 +42,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Authentication cancelled or failed.'),
-            backgroundColor: Colors.orange.shade700,
+            backgroundColor: AppColors.pendingLight,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -52,6 +53,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final provider = context.watch<SecurityProvider>();
     final availability = provider.availability;
 
@@ -60,9 +62,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildStatusCard(theme, provider, availability),
+          _buildStatusCard(theme, colorScheme, provider, availability),
           const SizedBox(height: 20),
-          _buildAppLockSection(theme, provider, availability),
+          _buildAppLockSection(theme, colorScheme, provider, availability),
         ],
       ),
     );
@@ -70,6 +72,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
   Widget _buildStatusCard(
     ThemeData theme,
+    ColorScheme colorScheme,
     SecurityProvider provider,
     availability,
   ) {
@@ -92,23 +95,26 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             const SizedBox(height: 12),
             _statusRow(
               theme,
+              colorScheme,
               'Biometric Hardware',
               hasHardware ? 'Available' : 'Not available',
-              hasHardware ? Colors.green : Colors.red,
+              hasHardware ? colorScheme.primary : colorScheme.error,
             ),
             const SizedBox(height: 8),
             _statusRow(
               theme,
+              colorScheme,
               'Credentials Enrolled',
               hasEnrolled ? 'Yes' : 'No',
-              hasEnrolled ? Colors.green : Colors.red,
+              hasEnrolled ? colorScheme.primary : colorScheme.error,
             ),
             const SizedBox(height: 8),
             _statusRow(
               theme,
+              colorScheme,
               'Available Types',
               types,
-              theme.colorScheme.primary,
+              colorScheme.primary,
             ),
           ],
         ),
@@ -116,7 +122,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
-  Widget _statusRow(ThemeData theme, String label, String value, Color valueColor) {
+  Widget _statusRow(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    String label,
+    String value,
+    Color valueColor,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -134,6 +146,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
   Widget _buildAppLockSection(
     ThemeData theme,
+    ColorScheme colorScheme,
     SecurityProvider provider,
     availability,
   ) {
@@ -155,12 +168,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             Text(
               'Require biometric authentication when opening the app or returning from background.',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 12),
             if (!isDeviceReady)
-              _buildDisabledToggle(theme, availability)
+              _buildDisabledToggle(theme, colorScheme, availability)
             else
               SwitchListTile(
                 title: const Text('Enable App Lock'),
@@ -168,8 +181,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   provider.appLockEnabled ? 'Active' : 'Disabled',
                   style: TextStyle(
                     color: provider.appLockEnabled
-                        ? Colors.green
-                        : Colors.grey[500],
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
                   ),
                 ),
                 value: provider.appLockEnabled,
@@ -185,8 +198,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             ? Icons.lock
                             : Icons.lock_open,
                         color: provider.appLockEnabled
-                            ? Colors.green
-                            : Colors.grey,
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                       ),
               ),
           ],
@@ -195,21 +208,25 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
-  Widget _buildDisabledToggle(ThemeData theme, availability) {
+  Widget _buildDisabledToggle(
+      ThemeData theme, ColorScheme colorScheme, availability) {
     final hasHardware = availability?.hasHardware ?? false;
     String reason;
     if (!hasHardware) {
       reason = 'This device does not have biometric hardware.';
     } else {
-      reason = 'No biometrics enrolled. Please add a fingerprint or face in your device settings.';
+      reason =
+          'No biometrics enrolled. Please add a fingerprint or face in your device settings.';
     }
 
     return ListTile(
-      leading: const Icon(Icons.lock_open, color: Colors.grey),
+      leading: Icon(Icons.lock_open, color: colorScheme.onSurfaceVariant),
       title: const Text('Enable App Lock'),
       subtitle: Text(
         reason,
-        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[500]),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
