@@ -24,7 +24,7 @@ class CsvService {
         i + 1,
         e.personName,
         e.type == EntryType.borrow ? 'Borrowed' : 'Lent',
-        e.amount.toStringAsFixed(2),
+        e.amount.toStringAsFixed(3),
         e.currency,
         e.status.name[0].toUpperCase() + e.status.name.substring(1),
         '${e.createdAt.year}-${e.createdAt.month.toString().padLeft(2, '0')}-${e.createdAt.day.toString().padLeft(2, '0')}',

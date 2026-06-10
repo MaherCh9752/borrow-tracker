@@ -83,11 +83,11 @@ The first screen after sign-in.
 
 | Element | What to look for |
 |---------|-----------------|
-| Total Borrowed card | Orange card — updates as you add borrow entries |
-| Total Lent card | Teal card — updates as you add lend entries |
+| Total Borrowed card | Orange card — shows total in TND, updates as you add borrow entries |
+| Total Lent card | Teal card — shows total in TND, updates as you add lend entries |
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
-| Recent Entries | Last 5 entries with name, amount, status chip, and relative time |
+| Recent Entries | Last 5 entries with name, amount, currency, status chip, and relative time |
 | Pull to refresh | Swipe down to reload from Firestore |
 
 Tap the **+** FAB to add your first entry.
@@ -125,8 +125,8 @@ Tap the **+** FAB on the dashboard.
 |-------|----------|-------|
 | Person Name | Yes | Free text |
 | Type | Yes | **I Borrowed** or **I Lent** (segmented button) |
-| Amount | Yes | Must be > 0 |
-| Currency | Yes | USD, EUR, GBP, TND |
+| Amount | Yes | Must be > 0, supports 3 decimal places |
+| Currency | Yes | TND (default), USD, EUR, GBP |
 | Status | Yes | Pending / Paid / Partial (defaults to Pending) |
 | Date | Yes | Defaults to today |
 | Deadline | No | Used by notification reminders |
@@ -227,7 +227,7 @@ Open via the hamburger menu → **Export to PDF**.
 | Print | Tap print icon → send to a printer |
 | Filtered export | From All Records, apply filters first → then export |
 
-**PDF includes:** header, table (Person, Type, Amount, Currency, Status, Date, Deadline, Notes), alternating row colors, summary section, page numbers.
+**PDF includes:** header, table (Person, Type, Amount, Currency, Status, Date, Deadline, Notes), alternating row colors, summary section with TND totals, page numbers.
 
 ---
 
@@ -242,7 +242,7 @@ Open via the hamburger menu → **Export to CSV**.
 | Save again | Stay on preview → save to a different location |
 | Filtered export | From All Records, apply filters first → then export |
 
-**CSV includes:** headers, ISO dates (YYYY-MM-DD), proper quoting for commas.
+**CSV includes:** headers, ISO dates (YYYY-MM-DD), proper quoting for commas, 3 decimal places for amounts.
 
 ---
 

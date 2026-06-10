@@ -35,7 +35,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     super.initState();
     final e = widget.entry;
     _personNameController.text = e?.personName ?? '';
-    _amountController.text = e != null ? e.amount.toStringAsFixed(2) : '';
+    _amountController.text = e != null ? e.amount.toStringAsFixed(3) : '';
     _notesController.text = e?.notes ?? '';
     _type = e?.type ?? EntryType.borrow;
     _currency = e?.currency ?? 'TND';
@@ -183,8 +183,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                       controller: _amountController,
                       decoration: const InputDecoration(
                         labelText: 'Amount',
-                        hintText: '0.00',
-                        prefixText: '\$ ',
+                        hintText: '0.000',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(

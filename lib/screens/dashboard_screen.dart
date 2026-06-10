@@ -201,6 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: _SummaryCard(
             title: 'Total Borrowed',
             amount: provider.totalBorrowed,
+            currency: AppConstants.defaultCurrency,
             icon: Icons.arrow_downward,
             color: AppColors.borrowColor,
             theme: theme,
@@ -211,6 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: _SummaryCard(
             title: 'Total Lent',
             amount: provider.totalLent,
+            currency: AppConstants.defaultCurrency,
             icon: Icons.arrow_upward,
             color: AppColors.lendColor,
             theme: theme,
@@ -372,6 +374,7 @@ class _MenuTile extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   final String title;
   final double amount;
+  final String currency;
   final IconData icon;
   final Color color;
   final ThemeData theme;
@@ -379,6 +382,7 @@ class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.title,
     required this.amount,
+    required this.currency,
     required this.icon,
     required this.color,
     required this.theme,
@@ -401,7 +405,7 @@ class _SummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '\$${amount.toStringAsFixed(2)}',
+              '${amount.toStringAsFixed(3)} $currency',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -494,7 +498,7 @@ class _RecentEntryTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '$sign\$${entry.amount.toStringAsFixed(2)}',
+              '$sign${entry.amount.toStringAsFixed(3)} ${entry.currency}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: entryColor,

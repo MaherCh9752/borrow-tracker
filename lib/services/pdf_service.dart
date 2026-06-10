@@ -75,7 +75,7 @@ class PdfService {
         '${i + 1}',
         e.personName,
         e.type == EntryType.borrow ? 'Borrowed' : 'Lent',
-        e.amount.toStringAsFixed(2),
+        e.amount.toStringAsFixed(3),
         e.currency,
         e.status.name[0].toUpperCase() + e.status.name.substring(1),
         '${e.createdAt.day}/${e.createdAt.month}/${e.createdAt.year}',
@@ -135,6 +135,8 @@ class PdfService {
     final pendingCount = entries.where((e) => e.status == EntryStatus.pending).length;
     final paidCount = entries.where((e) => e.status == EntryStatus.paid).length;
 
+    final primaryCurrency = 'TND';
+
     return pw.Container(
       padding: const pw.EdgeInsets.all(12),
       decoration: pw.BoxDecoration(
@@ -155,8 +157,8 @@ class PdfService {
           pw.Row(
             children: [
               _summaryItem('Total Entries', '${entries.length}'),
-              _summaryItem('Total Borrowed', '\$${totalBorrowed.toStringAsFixed(2)}'),
-              _summaryItem('Total Lent', '\$${totalLent.toStringAsFixed(2)}'),
+              _summaryItem('Total Borrowed', '$primaryCurrency ${totalBorrowed.toStringAsFixed(3)}'),
+              _summaryItem('Total Lent', '$primaryCurrency ${totalLent.toStringAsFixed(3)}'),
               _summaryItem('Pending', '$pendingCount'),
               _summaryItem('Paid', '$paidCount'),
             ],

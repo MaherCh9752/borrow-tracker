@@ -382,7 +382,7 @@ class _EntryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '$sign\$${entry.amount.toStringAsFixed(2)} (${entry.currency})',
+              '$sign${entry.amount.toStringAsFixed(3)} ${entry.currency}',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: amountColor,
@@ -460,7 +460,7 @@ class _EntryCard extends StatelessWidget {
           builder: (ctx) => AlertDialog(
             title: const Text('Delete Entry'),
             content: Text(
-                'Delete the entry for ${entry.personName} (\$${entry.amount.toStringAsFixed(2)})?'),
+                'Delete the entry for ${entry.personName} (${entry.amount.toStringAsFixed(3)} ${entry.currency})?'),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),

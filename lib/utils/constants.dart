@@ -10,4 +10,6 @@ class AppConstants {
       'You\'re offline. Changes will sync when reconnected.';
   static const String secureStorageAppLockKey = 'app_lock_enabled';
   static const String themePreferenceKey = 'theme_mode';
+  static const String defaultCurrency = 'TND';
+  static const int currencyDecimals = 3;
 }

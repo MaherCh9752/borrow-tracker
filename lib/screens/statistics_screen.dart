@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../providers/entry_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/constants.dart';
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -106,6 +107,8 @@ class _MonthlyBarChart extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final labelColor = colorScheme.onSurface;
+
+    final primaryCurrency = AppConstants.defaultCurrency;
 
     final monthMap = <String, _MonthTotal>{};
     for (final entry in entries) {
@@ -220,7 +223,7 @@ class _MonthlyBarChart extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       if (value == 0) return const SizedBox();
                       return Text(
-                        '\$${value.toInt()}',
+                        '${value.toInt()} $primaryCurrency',
                         style: TextStyle(
                           fontSize: 10,
                           color: labelColor,
@@ -270,6 +273,8 @@ class _PaidPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primaryCurrency = AppConstants.defaultCurrency;
+
     double paid = 0, unpaid = 0;
     for (final entry in entries) {
       if (entry.status == EntryStatus.paid) {
@@ -328,12 +333,12 @@ class _PaidPieChart extends StatelessWidget {
           children: [
             _LegendDot(
               color: AppColors.chartPaid,
-              label: 'Paid (\$${paid.toStringAsFixed(0)})',
+              label: 'Paid ($primaryCurrency ${paid.toStringAsFixed(3)})',
             ),
             const SizedBox(height: 10),
             _LegendDot(
               color: AppColors.chartUnpaid,
-              label: 'Unpaid (\$${unpaid.toStringAsFixed(0)})',
+              label: 'Unpaid ($primaryCurrency ${unpaid.toStringAsFixed(3)})',
             ),
           ],
         ),
@@ -352,6 +357,8 @@ class _DebtLineChart extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final labelColor = colorScheme.onSurface;
+
+    final primaryCurrency = AppConstants.defaultCurrency;
 
     final sorted = List<BorrowLend>.from(entries)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -421,7 +428,7 @@ class _DebtLineChart extends StatelessWidget {
                   return const SizedBox();
                 }
                 return Text(
-                  '\$${value.toInt()}',
+                  '${value.toInt()} $primaryCurrency',
                   style: TextStyle(
                     fontSize: 10,
                     color: labelColor,

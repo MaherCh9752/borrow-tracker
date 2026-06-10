@@ -91,6 +91,14 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Consistent 10-12px border radius across all components
 - Themed card borders, dialog shapes, snackbar shapes, bottom sheet shapes
 
+### Currency & Number Formatting
+- **Default currency**: TND (Tunisian Dinar) — set in `AppConstants.defaultCurrency`
+- **Decimal precision**: 3 digits after the decimal point (`AppConstants.currencyDecimals = 3`)
+- **Dashboard summary cards**: Always display TND regardless of individual entry currencies
+- **Statistics charts**: Axis labels and legends always display TND
+- **PDF export summary**: Always displays TND
+- **Individual entries**: Display their own currency (e.g. `150.000 USD`) in list views and recent entries
+
 ### Offline Support
 - **Firestore persistence** enabled explicitly with unlimited cache size in `main.dart`
 - **`ConnectivityService`** wraps `connectivity_plus` to monitor network status via `onConnectivityChanged` stream
