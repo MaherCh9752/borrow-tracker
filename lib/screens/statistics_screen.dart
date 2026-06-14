@@ -2,7 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
-import '../providers/entry_provider.dart';
+import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
 
@@ -11,7 +11,7 @@ class StatisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = context.watch<EntryProvider>().entries;
+    final entries = context.watch<SharedEntryProvider>().entries;
     final theme = Theme.of(context);
 
     return Scaffold(

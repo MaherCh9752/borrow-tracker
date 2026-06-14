@@ -96,6 +96,23 @@ class AuthService {
     }
   }
 
+  /// Fetches all registered users (for the UserPicker).
+  Future<List<UserModel>> fetchAllUsers() async {
+    final snapshot =
+        await _firestore.collection(AppConstants.usersCollection).get();
+    return snapshot.docs
+        .map((doc) => UserModel.fromMap(doc.data()))
+        .toList();
+  }
+
+  /// Fetches a single user by UID.
+  Future<UserModel?> fetchUserById(String uid) async {
+    final doc =
+        await _firestore.collection(AppConstants.usersCollection).doc(uid).get();
+    if (!doc.exists) return null;
+    return UserModel.fromMap(doc.data()!);
+  }
+
   /// Maps FirebaseAuthException to a user-friendly message.
   Exception _mapAuthError(FirebaseAuthException e) {
     switch (e.code) {

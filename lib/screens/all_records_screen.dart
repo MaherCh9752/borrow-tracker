@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
-import '../providers/entry_provider.dart';
+import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
 import 'add_edit_entry_screen.dart';
@@ -23,7 +24,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      context.read<EntryProvider>().setSearchQuery(_searchController.text);
+      context.read<SharedEntryProvider>().setSearchQuery(_searchController.text);
     });
   }
 
@@ -35,10 +36,10 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final entryProvider = context.watch<EntryProvider>();
+    final sharedEntryProvider = context.watch<SharedEntryProvider>();
     final authProvider = context.read<AuthProvider>();
     final theme = Theme.of(context);
-    final filtered = entryProvider.filteredEntries;
+    final filtered = sharedEntryProvider.filteredEntries;
 
     return Scaffold(
       appBar: AppBar(
@@ -68,13 +69,13 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
                       ),
                     ),
           ),
-          if (entryProvider.filtersActive)
+          if (sharedEntryProvider.filtersActive)
             IconButton(
               icon: const Icon(Icons.filter_alt_off),
               tooltip: 'Clear filters',
               onPressed: () {
                 _searchController.clear();
-                entryProvider.clearFilters();
+                sharedEntryProvider.clearFilters();
               },
             ),
         ],
@@ -83,13 +84,13 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
         children: [
           const OfflineIndicator(),
           _buildSearchBar(theme),
-          _buildFilterChips(theme, entryProvider),
+          _buildFilterChips(theme, sharedEntryProvider),
           const Divider(height: 1),
           Expanded(
-            child: entryProvider.isLoading
+            child: sharedEntryProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
-                    ? _buildEmptyState(theme, entryProvider)
+                    ? _buildEmptyState(theme, sharedEntryProvider)
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                         itemCount: filtered.length,
@@ -97,7 +98,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
                           final entry = filtered[index];
                           return _EntryCard(
                             entry: entry,
-                            userId: authProvider.user!.uid,
+                            currentUserId: authProvider.user!.uid,
                           );
                         },
                       ),
@@ -120,7 +121,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
                   icon: const Icon(Icons.clear),
                   onPressed: () {
                     _searchController.clear();
-                    context.read<EntryProvider>().setSearchQuery('');
+                    context.read<SharedEntryProvider>().setSearchQuery('');
                   },
                 )
               : null,
@@ -135,7 +136,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  Widget _buildFilterChips(ThemeData theme, EntryProvider provider) {
+  Widget _buildFilterChips(ThemeData theme, SharedEntryProvider provider) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
       child: SingleChildScrollView(
@@ -165,7 +166,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Deadline',
-              active: provider.deadlineFilter != DeadlineFilter.all,
+              active: provider.deadlineFilter != SharedDeadlineFilter.all,
               activeLabel: _deadlineLabel(provider.deadlineFilter),
               onTap: () => _showDeadlinePicker(provider),
             ),
@@ -175,22 +176,22 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  String _deadlineLabel(DeadlineFilter filter) {
+  String _deadlineLabel(SharedDeadlineFilter filter) {
     switch (filter) {
-      case DeadlineFilter.hasDeadline:
+      case SharedDeadlineFilter.hasDeadline:
         return 'Has deadline';
-      case DeadlineFilter.noDeadline:
+      case SharedDeadlineFilter.noDeadline:
         return 'No deadline';
-      case DeadlineFilter.overdue:
+      case SharedDeadlineFilter.overdue:
         return 'Overdue';
-      case DeadlineFilter.upcoming:
+      case SharedDeadlineFilter.upcoming:
         return 'Next 7 days';
-      case DeadlineFilter.all:
+      case SharedDeadlineFilter.all:
         return '';
     }
   }
 
-  void _showStatusPicker(EntryProvider provider) {
+  void _showStatusPicker(SharedEntryProvider provider) {
     _showFilterOptions(
       title: 'Filter by Status',
       options: EntryStatus.values,
@@ -200,7 +201,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  void _showTypePicker(EntryProvider provider) {
+  void _showTypePicker(SharedEntryProvider provider) {
     _showFilterOptions(
       title: 'Filter by Type',
       options: EntryType.values,
@@ -210,7 +211,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  void _showCurrencyPicker(EntryProvider provider) {
+  void _showCurrencyPicker(SharedEntryProvider provider) {
     final currencies = provider.usedCurrencies.toList()..sort();
     _showFilterOptions(
       title: 'Filter by Currency',
@@ -221,16 +222,16 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  void _showDeadlinePicker(EntryProvider provider) {
-    final options = DeadlineFilter.values;
+  void _showDeadlinePicker(SharedEntryProvider provider) {
+    final options = SharedDeadlineFilter.values;
     _showFilterOptions(
       title: 'Filter by Deadline',
       options: options,
       labelOf: (f) => _deadlineLabel(f),
-      selected: provider.deadlineFilter == DeadlineFilter.all
+      selected: provider.deadlineFilter == SharedDeadlineFilter.all
           ? null
           : provider.deadlineFilter,
-      onSelected: (v) => provider.setDeadlineFilter(v ?? DeadlineFilter.all),
+      onSelected: (v) => provider.setDeadlineFilter(v ?? SharedDeadlineFilter.all),
     );
   }
 
@@ -276,7 +277,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme, EntryProvider provider) {
+  Widget _buildEmptyState(ThemeData theme, SharedEntryProvider provider) {
     if (!provider.hasEntries) {
       return Center(
         child: Column(
@@ -303,7 +304,7 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
           TextButton(
             onPressed: () {
               _searchController.clear();
-              context.read<EntryProvider>().clearFilters();
+              context.read<SharedEntryProvider>().clearFilters();
             },
             child: const Text('Clear filters'),
           ),
@@ -351,10 +352,12 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _EntryCard extends StatelessWidget {
-  final BorrowLend entry;
-  final String userId;
+  final SharedEntry entry;
+  final String currentUserId;
 
-  const _EntryCard({required this.entry, required this.userId});
+  const _EntryCard({required this.entry, required this.currentUserId});
+
+  bool get _canDelete => entry.createdBy == currentUserId;
 
   @override
   Widget build(BuildContext context) {
@@ -374,9 +377,38 @@ class _EntryCard extends StatelessWidget {
             size: 20,
           ),
         ),
-        title: Text(
-          entry.personName,
-          style: const TextStyle(fontWeight: FontWeight.w500),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                entry.personName,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (entry.participants.length > 1)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.group, size: 12, color: theme.colorScheme.onPrimaryContainer),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${entry.participants.length}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,7 +454,8 @@ class _EntryCard extends StatelessWidget {
             if (entry.status != EntryStatus.partial)
               const PopupMenuItem(
                   value: _Action.markPartial, child: Text('Mark Partial')),
-            const PopupMenuItem(value: _Action.delete, child: Text('Delete')),
+            if (_canDelete)
+              const PopupMenuItem(value: _Action.delete, child: Text('Delete')),
           ],
         ),
       ),
@@ -430,7 +463,7 @@ class _EntryCard extends StatelessWidget {
   }
 
   Future<void> _handleAction(BuildContext context, _Action action) async {
-    final entryProvider = context.read<EntryProvider>();
+    final sharedEntryProvider = context.read<SharedEntryProvider>();
 
     switch (action) {
       case _Action.edit:
@@ -441,8 +474,7 @@ class _EntryCard extends StatelessWidget {
           ),
         );
       case _Action.markPaid:
-        await entryProvider.editEntry(
-          userId: userId,
+        await sharedEntryProvider.editEntry(
           entry: entry.copyWith(
             status: entry.status == EntryStatus.paid
                 ? EntryStatus.pending
@@ -450,8 +482,7 @@ class _EntryCard extends StatelessWidget {
           ),
         );
       case _Action.markPartial:
-        await entryProvider.editEntry(
-          userId: userId,
+        await sharedEntryProvider.editEntry(
           entry: entry.copyWith(status: EntryStatus.partial),
         );
       case _Action.delete:
@@ -474,7 +505,7 @@ class _EntryCard extends StatelessWidget {
           ),
         );
         if (confirmed == true) {
-          await entryProvider.deleteEntry(userId: userId, entryId: entry.id);
+          await sharedEntryProvider.deleteEntry(entryId: entry.id);
         }
     }
   }

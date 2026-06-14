@@ -29,6 +29,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     final authProvider = context.read<AuthProvider>();
@@ -47,6 +48,7 @@ class _AuthScreenState extends State<AuthScreen> {
       );
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (success && mounted) {

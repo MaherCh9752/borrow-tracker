@@ -1,6 +1,6 @@
 # Borrow Tracker
 
-A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, local notifications, offline support, and a polished Material 3 UI.
+A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, local notifications, offline support, shared entries between users, and a polished Material 3 UI.
 
 ---
 
@@ -9,6 +9,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 | Feature | Description |
 |---------|-------------|
 | Authentication | Email/password sign-up, sign-in, password reset |
+| Shared Entries | Entries shared between multiple users — single source of truth |
 | Entry Management | Full CRUD with real-time Firestore sync |
 | Dashboard | Summary cards, stats, recent entries |
 | Search & Filters | Text search, status/type/currency/deadline filters |
@@ -42,8 +43,12 @@ flutter pub get
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable **Authentication** (email/password provider)
 3. Enable **Cloud Firestore**
-4. Download `google-services.json` and place it in `android/app/`
-5. (Optional) Download `GoogleService-Info.plist` for iOS and place it in `ios/Runner/`
+4. Deploy Firestore indexes and rules:
+   ```bash
+   firebase deploy --only firestore:indexes,rules
+   ```
+5. Download `google-services.json` and place it in `android/app/`
+6. (Optional) Download `GoogleService-Info.plist` for iOS and place it in `ios/Runner/`
 
 ### Run
 
@@ -67,7 +72,68 @@ flutter run
 
 ---
 
-### 2. First-Run Notification Prompt
+### 2. Shared Entries (Multi-User)
+
+This is the core collaboration feature. Entries can be shared between multiple users — each entry lives once in Firestore and appears for all participants.
+
+#### Creating a Shared Entry
+
+1. Sign in as **User A**
+2. Tap the **+** FAB on the dashboard
+3. Fill in the entry form (person name, amount, type, etc.)
+4. Scroll to the **Participants** section
+5. Tap **Add Participants**
+6. The user picker opens — search by name or email
+7. Select **User B** (checkbox toggles)
+8. Tap **Confirm** — you'll see User B listed as a participant
+9. Tap **Add Entry**
+
+**Result:** The entry now appears on both User A's and User B's dashboards.
+
+#### Viewing Shared Entries
+
+- Both users see the same entry on their dashboard
+- Entries with multiple participants show a **group badge** (e.g., `👥 2`) on the All Records screen
+- The creator's name is shown in the entry details
+
+#### Editing Shared Entries
+
+1. Either User A or User B can edit the entry
+2. Tap **⋮** → **Edit** on any shared entry
+3. Make changes (amount, status, notes, etc.)
+4. Tap **Update Entry**
+5. Both users see the update in real-time
+
+#### Status Changes
+
+Any participant can change the status:
+- Tap **⋮** → **Mark Paid** → entry status updates for everyone
+- Tap **⋮** → **Mark Partial** → entry status updates for everyone
+
+#### Deleting Entries
+
+- **Only the creator** can delete an entry
+- If you're not the creator, the **Delete** option is hidden from the menu
+- Creator taps **⋮** → **Delete** → confirm → entry removed for all participants
+
+#### Personal Entries (No Sharing)
+
+- If you don't select any participants, the entry is personal
+- Only you can see it
+- The form shows "Entry will be personal (only you)"
+
+#### Permissions Summary
+
+| Action | Creator | Participant |
+|--------|---------|-------------|
+| View entry | ✅ | ✅ |
+| Edit entry | ✅ | ✅ |
+| Mark paid/partial | ✅ | ✅ |
+| Delete entry | ✅ | ❌ (hidden) |
+
+---
+
+### 3. First-Run Notification Prompt
 
 On the very first launch (before sign-in), a dialog asks to enable notifications.
 
@@ -77,7 +143,7 @@ On the very first launch (before sign-in), a dialog asks to enable notifications
 
 ---
 
-### 3. Dashboard
+### 4. Dashboard
 
 The first screen after sign-in.
 
@@ -94,30 +160,23 @@ Tap the **+** FAB to add your first entry.
 
 ---
 
-### 4. Navigation — Hamburger Menu
+### 5. Navigation — Hamburger Menu
 
 The dashboard uses a clean hamburger menu for navigation:
 
-```
-┌──────────────────────────────────────────┐
-│  ☰    💰 Borrow Tracker            🚪  │
-│ menu   logo + title                  logout│
-└──────────────────────────────────────────┘
-```
-
-| Menu Item | Icon | Where it goes |
-|-----------|------|--------------|
-| All Records | 📋 | Full list with search, filters, and actions |
-| Statistics | 📊 | Three interactive charts |
-| Export to CSV | 📊 | Preview and save CSV file |
-| Export to PDF | 📄 | Preview, share, or print PDF |
-| Notifications | 🔔 | Reminder configuration |
-| Appearance | 🎨 | Theme selection (Light / Dark / System) |
-| Security | 🛡️ | Biometric app lock settings |
+| Menu Item | Where it goes |
+|-----------|--------------|
+| All Records | Full list with search, filters, and actions |
+| Statistics | Three interactive charts |
+| Export to CSV | Preview and save CSV file |
+| Export to PDF | Preview, share, or print PDF |
+| Notifications | Reminder configuration |
+| Appearance | Theme selection (Light / Dark / System) |
+| Security | Biometric app lock settings |
 
 ---
 
-### 5. Add / Edit Entry
+### 6. Add / Edit Entry
 
 Tap the **+** FAB on the dashboard.
 
@@ -131,15 +190,17 @@ Tap the **+** FAB on the dashboard.
 | Date | Yes | Defaults to today |
 | Deadline | No | Used by notification reminders |
 | Notes | No | Free text |
+| Participants | No | Tap "Add Participants" to share with other users |
 
 **Try this:**
 - Add a borrow entry with a deadline 3 days from now
 - Add a lend entry marked as Paid
+- Add a shared entry with another user
 - Edit any field and save — the list updates in real time
 
 ---
 
-### 6. All Records & Filters
+### 7. All Records & Filters
 
 Open via the hamburger menu → **All Records**.
 
@@ -154,11 +215,11 @@ Open via the hamburger menu → **All Records**.
 | Clear all | Tap the clear icon in the AppBar |
 | Edit entry | Tap **⋮** → Edit |
 | Change status | Tap **⋮** → Mark Paid / Mark Pending / Mark Partial |
-| Delete entry | Tap **⋮** → Delete → confirm |
+| Delete entry | Tap **⋮** → Delete → confirm (only if you're the creator) |
 
 ---
 
-### 7. Statistics
+### 8. Statistics
 
 Open via the hamburger menu → **Statistics**.
 
@@ -175,7 +236,7 @@ Open via the hamburger menu → **Statistics**.
 
 ---
 
-### 8. Notifications
+### 9. Notifications
 
 Open via the hamburger menu → **Notifications**.
 
@@ -200,7 +261,7 @@ Open via the hamburger menu → **Notifications**.
 
 ---
 
-### 9. Offline Support
+### 10. Offline Support
 
 The app works fully offline. Firestore queues all changes locally and syncs when reconnected.
 
@@ -216,7 +277,7 @@ The app works fully offline. Firestore queues all changes locally and syncs when
 
 ---
 
-### 10. Export to PDF
+### 11. Export to PDF
 
 Open via the hamburger menu → **Export to PDF**.
 
@@ -231,7 +292,7 @@ Open via the hamburger menu → **Export to PDF**.
 
 ---
 
-### 11. Export to CSV
+### 12. Export to CSV
 
 Open via the hamburger menu → **Export to CSV**.
 
@@ -246,7 +307,7 @@ Open via the hamburger menu → **Export to CSV**.
 
 ---
 
-### 12. Dark Mode
+### 13. Dark Mode
 
 Open via the hamburger menu → **Appearance**.
 
@@ -263,7 +324,7 @@ Open via the hamburger menu → **Appearance**.
 
 ---
 
-### 13. Biometric App Lock
+### 14. Biometric App Lock
 
 Open via the hamburger menu → **Security**.
 
@@ -285,12 +346,12 @@ Open via the hamburger menu → **Security**.
 lib/
 ├── main.dart                          # Entry point, providers, WorkManager init
 ├── firebase_options.dart              # Firebase config (generated)
-├── models/                            # Data models (BorrowLend, User, ReminderSettings)
+├── models/                            # Data models (BorrowLend, SharedEntry, User, ReminderSettings)
 ├── theme/                             # AppTheme, AppColors, light/dark ThemeData
 ├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric
-├── providers/                         # Auth, Entry, Notification, Connectivity, Security, Theme
+├── providers/                         # Auth, Entry, SharedEntry, Notification, Connectivity, Security, Theme
 ├── screens/                           # All UI screens
-├── widgets/                           # Reusable widgets (OfflineIndicator)
+├── widgets/                           # Reusable widgets (OfflineIndicator, UserPicker)
 └── utils/                             # Constants
 ```
 

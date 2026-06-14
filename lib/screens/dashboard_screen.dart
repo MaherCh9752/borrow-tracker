@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
-import '../providers/entry_provider.dart';
+import '../providers/shared_entry_provider.dart';
 import '../providers/notification_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
@@ -30,15 +31,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final userId = context.read<AuthProvider>().user!.uid;
-      final entryProvider = context.read<EntryProvider>();
+      final sharedEntryProvider = context.read<SharedEntryProvider>();
       final notificationProvider = context.read<NotificationProvider>();
 
-      entryProvider.listenToEntries(userId);
+      sharedEntryProvider.listenToEntries(userId);
 
-      entryProvider.onEntriesRefreshed = () {
+      sharedEntryProvider.onEntriesRefreshed = () {
         if (mounted) {
           notificationProvider
-              .onEntriesUpdated(entryProvider.entries);
+              .onEntriesUpdated(sharedEntryProvider.entries);
         }
       };
 
@@ -49,14 +50,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final entryProvider = context.watch<EntryProvider>();
+    final sharedEntryProvider = context.watch<SharedEntryProvider>();
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         leading: PopupMenuButton<_MenuAction>(
           icon: const Icon(Icons.menu),
-          onSelected: (action) => _handleMenuAction(context, action, entryProvider),
+          onSelected: (action) => _handleMenuAction(context, action, sharedEntryProvider),
           itemBuilder: (context) => [
             const PopupMenuItem(
               value: _MenuAction.allRecords,
@@ -134,9 +135,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: RefreshIndicator(
               onRefresh: () async {
                 final userId = authProvider.user!.uid;
-                context.read<EntryProvider>().listenToEntries(userId);
+                context.read<SharedEntryProvider>().listenToEntries(userId);
               },
-              child: _buildBody(theme, entryProvider, authProvider),
+              child: _buildBody(theme, sharedEntryProvider, authProvider),
             ),
           ),
         ],
@@ -145,12 +146,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildBody(
-      ThemeData theme, EntryProvider entryProvider, AuthProvider authProvider) {
-    if (entryProvider.isLoading) {
+      ThemeData theme, SharedEntryProvider sharedEntryProvider, AuthProvider authProvider) {
+    if (sharedEntryProvider.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (entryProvider.error != null) {
+    if (sharedEntryProvider.error != null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -159,7 +160,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 8),
             Text('Something went wrong', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
-            Text(entryProvider.error!,
+            Text(sharedEntryProvider.error!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 )),
@@ -173,11 +174,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _buildGreeting(theme, authProvider),
         const SizedBox(height: 8),
-        _buildSummaryRow(theme, entryProvider),
+        _buildSummaryRow(theme, sharedEntryProvider),
         const SizedBox(height: 16),
-        _buildStatsRow(theme, entryProvider),
+        _buildStatsRow(theme, sharedEntryProvider),
         const SizedBox(height: 24),
-        _buildRecentSection(theme, entryProvider),
+        _buildRecentSection(theme, sharedEntryProvider),
       ],
     );
   }
@@ -194,7 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSummaryRow(ThemeData theme, EntryProvider provider) {
+  Widget _buildSummaryRow(ThemeData theme, SharedEntryProvider provider) {
     return Row(
       children: [
         Expanded(
@@ -222,7 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildStatsRow(ThemeData theme, EntryProvider provider) {
+  Widget _buildStatsRow(ThemeData theme, SharedEntryProvider provider) {
     return Row(
       children: [
         Expanded(
@@ -248,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildRecentSection(ThemeData theme, EntryProvider provider) {
+  Widget _buildRecentSection(ThemeData theme, SharedEntryProvider provider) {
     final recent = provider.recentEntries;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,7 +297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _handleMenuAction(
     BuildContext context,
     _MenuAction action,
-    EntryProvider entryProvider,
+    SharedEntryProvider sharedEntryProvider,
   ) {
     switch (action) {
       case _MenuAction.allRecords:
@@ -308,21 +309,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             MaterialPageRoute(builder: (_) => const StatisticsScreen()));
         break;
       case _MenuAction.exportCsv:
-        if (entryProvider.entries.isNotEmpty) {
+        if (sharedEntryProvider.entries.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CsvPreviewScreen(entries: entryProvider.entries),
+              builder: (_) => CsvPreviewScreen(entries: sharedEntryProvider.entries),
             ),
           );
         }
         break;
       case _MenuAction.exportPdf:
-        if (entryProvider.entries.isNotEmpty) {
+        if (sharedEntryProvider.entries.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PdfPreviewScreen(entries: entryProvider.entries),
+              builder: (_) => PdfPreviewScreen(entries: sharedEntryProvider.entries),
             ),
           );
         }
@@ -463,7 +464,7 @@ class _StatsCard extends StatelessWidget {
 }
 
 class _RecentEntryTile extends StatelessWidget {
-  final BorrowLend entry;
+  final SharedEntry entry;
   final ThemeData theme;
 
   const _RecentEntryTile({required this.entry, required this.theme});

@@ -8,6 +8,7 @@ import 'package:workmanager/workmanager.dart';
 import 'providers/auth_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/entry_provider.dart';
+import 'providers/shared_entry_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/security_provider.dart';
 import 'providers/theme_provider.dart';
@@ -45,6 +46,7 @@ class BorrowTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ThemeProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EntryProvider()),
+        ChangeNotifierProvider(create: (_) => SharedEntryProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()..initialize()),

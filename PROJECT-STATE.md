@@ -30,12 +30,23 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Form validation and FirebaseAuthException error mapping
 - Firestore user document created on first sign-in
 
-### Entry Management (CRUD)
-- `BorrowLend` model with `EntryType` (`borrow`/`lend`) and `EntryStatus` (`pending`/`paid`/`partial`)
-- Firestore collection: `users/{uid}/borrowLendEntries/{entryId}`
-- Add, edit, delete with real-time sync
-- Status toggle (paid / pending / partial) from list view
+### Shared Entry Management (CRUD)
+- `SharedEntry` model extending `BorrowLend` with `createdBy` and `participants` fields
+- Firestore collection: `shared_entries/{entryId}` — single source of truth, no duplication per user
+- Participants array of user IDs — entry appears for all participants via `ARRAY-CONTAINS` query
+- Default personal entries: entries without selected participants default to `participants: [currentUserId]`
+- Add, edit, delete with real-time sync across all participants
+- Status toggle (paid / pending / partial) from list view — any participant can update
+- Delete restricted to creator only (hidden from non-creator popup menus)
+- Participant count badge shown on entries with multiple participants
 - Pull-to-refresh and loading/error states
+
+### UserPicker Widget
+- Multi-select user picker bottom sheet with search by name/email
+- Fetches all registered users from Firestore
+- Displays user avatar, display name, and email
+- Checkbox selection with confirm button showing participant count
+- Used in AddEditEntryScreen to assign participants to entries
 
 ### Dashboard
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
@@ -162,14 +173,16 @@ lib/
 ├── models/
 │   ├── user_model.dart                # User data model
 │   ├── borrow_lend.dart               # Borrow/lend entry model + enums
+│   ├── shared_entry_model.dart        # SharedEntry model with createdBy + participants
 │   └── reminder_settings.dart         # Notification settings model
 ├── theme/
 │   ├── app_theme.dart                 # AppTheme accessor + AppColors semantic tokens
 │   ├── light_theme.dart               # ThemeData for light mode
 │   └── dark_theme.dart                # ThemeData for dark mode
 ├── services/
-│   ├── auth_service.dart              # Firebase Auth operations
-│   ├── entry_service.dart             # Firestore CRUD
+│   ├── auth_service.dart              # Firebase Auth operations + fetchAllUsers
+│   ├── entry_service.dart             # Legacy Firestore CRUD (per-user sub-collection)
+│   ├── shared_entry_service.dart      # Shared entries Firestore CRUD (ARRAY-CONTAINS query)
 │   ├── notification_service.dart      # flutter_local_notifications + WorkManager scheduling
 │   ├── notification_callback.dart     # Top-level WorkManager dispatcher (background isolate)
 │   ├── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
@@ -178,7 +191,8 @@ lib/
 │   └── biometric_service.dart         # Biometric authentication via local_auth
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
-│   ├── entry_provider.dart            # Entry state, filters, aggregates
+│   ├── entry_provider.dart            # Legacy entry state (per-user sub-collection)
+│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
@@ -187,7 +201,7 @@ lib/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
 │   ├── all_records_screen.dart        # Full list with actions & filters
-│   ├── add_edit_entry_screen.dart     # Entry form (add & edit)
+│   ├── add_edit_entry_screen.dart     # Entry form with UserPicker integration
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
 │   ├── appearance_settings_screen.dart # Theme selection (System / Light / Dark)
@@ -196,7 +210,8 @@ lib/
 │   ├── security_settings_screen.dart  # Biometric app lock toggle + device status
 │   └── home_screen.dart               # Simple welcome screen (unused in nav flow)
 ├── widgets/
-│   └── offline_indicator.dart         # Orange banner shown when offline
+│   ├── offline_indicator.dart         # Orange banner shown when offline
+│   └── user_picker.dart               # Multi-select user picker for shared entries
 └── utils/
     └── constants.dart                 # App-wide constants
 ```
@@ -207,6 +222,8 @@ lib/
 - `coreLibraryDesugaring` enabled for `java.time` API on older Android
 - `USE_EXACT_ALARM` + `SCHEDULE_EXACT_ALARM` + `POST_NOTIFICATIONS` + `RECEIVE_BOOT_COMPLETED` declared in `AndroidManifest.xml`
 - `shared_preferences` for first-run tracking, theme mode persistence
+- Firestore composite index on `shared_entries` (`participants` ASC + `createdAt` DESC)
+- Firestore security rules for `shared_entries` (participants read, creator delete, participant update)
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending

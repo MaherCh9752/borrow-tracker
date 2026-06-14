@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
-import '../providers/entry_provider.dart';
+import '../providers/shared_entry_provider.dart';
+import '../services/auth_service.dart';
+import '../widgets/user_picker.dart';
 
 class AddEditEntryScreen extends StatefulWidget {
-  final BorrowLend? entry;
+  final SharedEntry? entry;
 
   const AddEditEntryScreen({super.key, this.entry});
 
@@ -20,6 +23,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   final _personNameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  final _authService = AuthService();
 
   late EntryType _type;
   late String _currency;
@@ -27,6 +31,9 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   late DateTime _createdAt;
   DateTime? _deadline;
   bool _isSaving = false;
+
+  List<String> _selectedParticipants = [];
+  Map<String, String> _participantNames = {};
 
   static const List<String> _currencies = ['USD', 'EUR', 'GBP', 'TND'];
 
@@ -42,6 +49,22 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     _status = e?.status ?? EntryStatus.pending;
     _createdAt = e?.createdAt ?? DateTime.now();
     _deadline = e?.deadline;
+
+    if (e != null) {
+      _selectedParticipants = List<String>.from(e.participants);
+      _loadParticipantNames();
+    }
+  }
+
+  Future<void> _loadParticipantNames() async {
+    final names = <String, String>{};
+    for (final uid in _selectedParticipants) {
+      final user = await _authService.fetchUserById(uid);
+      if (user != null) {
+        names[uid] = user.displayName ?? user.email;
+      }
+    }
+    if (mounted) setState(() => _participantNames = names);
   }
 
   @override
@@ -72,6 +95,19 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     }
   }
 
+  Future<void> _openUserPicker() async {
+    final currentUserId = context.read<AuthProvider>().user!.uid;
+    final result = await UserPicker.show(
+      context: context,
+      initiallySelected: _selectedParticipants,
+      currentUserId: currentUserId,
+    );
+    if (result != null && mounted) {
+      setState(() => _selectedParticipants = result);
+      _loadParticipantNames();
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_isSaving) return;
@@ -80,9 +116,15 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
 
     try {
       final userId = context.read<AuthProvider>().user!.uid;
-      final entryProvider = context.read<EntryProvider>();
+      final sharedEntryProvider = context.read<SharedEntryProvider>();
 
-      final entry = BorrowLend(
+      final participants = _selectedParticipants.isEmpty
+          ? [userId]
+          : _selectedParticipants.contains(userId)
+              ? _selectedParticipants
+              : [userId, ..._selectedParticipants];
+
+      final entry = SharedEntry(
         id: widget.entry?.id ?? '',
         personName: _personNameController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
@@ -94,24 +136,21 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
         createdAt: _createdAt,
         deadline: _deadline,
         status: _status,
+        createdBy: widget.isEditing ? widget.entry!.createdBy : userId,
+        participants: participants,
       );
 
       bool success;
       if (widget.isEditing) {
-        success = await entryProvider
-            .editEntry(userId: userId, entry: entry)
-            .timeout(const Duration(milliseconds: 500));
+        success = await sharedEntryProvider.editEntry(entry: entry);
       } else {
-        success = await entryProvider
-            .addEntry(userId: userId, entry: entry)
-            .timeout(const Duration(milliseconds: 500));
+        success = await sharedEntryProvider.addEntry(entry: entry);
       }
 
       if (success && mounted) {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      // Timeout or error — Firestore still queued the write locally.
       debugPrint('[AddEditEntry] _save: $e');
       if (mounted) {
         Navigator.pop(context, true);
@@ -283,6 +322,10 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
               ),
+              const SizedBox(height: 20),
+              _buildSectionLabel(theme, 'Participants'),
+              const SizedBox(height: 8),
+              _buildParticipantSection(theme),
               const SizedBox(height: 32),
               SizedBox(
                 height: 48,
@@ -305,6 +348,49 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildParticipantSection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_selectedParticipants.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _selectedParticipants.map((uid) {
+              final name = _participantNames[uid] ?? uid.substring(0, 6);
+              return Chip(
+                label: Text(name, style: const TextStyle(fontSize: 13)),
+                deleteIcon: const Icon(Icons.close, size: 18),
+                onDeleted: () {
+                  setState(() => _selectedParticipants.remove(uid));
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+        ],
+        OutlinedButton.icon(
+          onPressed: _openUserPicker,
+          icon: const Icon(Icons.group_add, size: 20),
+          label: Text(
+            _selectedParticipants.isEmpty
+                ? 'Add Participants (Optional)'
+                : 'Edit Participants',
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _selectedParticipants.isEmpty
+              ? 'Entry will be personal (only you)'
+              : 'Shared with ${_selectedParticipants.length} participant${_selectedParticipants.length == 1 ? '' : 's'}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 
