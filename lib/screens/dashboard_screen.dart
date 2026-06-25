@@ -16,6 +16,7 @@ import 'notification_settings_screen.dart';
 import 'pdf_preview_screen.dart';
 import 'security_settings_screen.dart';
 import 'statistics_screen.dart';
+import 'pending_requests_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -52,6 +53,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final authProvider = context.watch<AuthProvider>();
     final sharedEntryProvider = context.watch<SharedEntryProvider>();
     final theme = Theme.of(context);
+    final pendingCount = sharedEntryProvider.pendingFromMe.length +
+        sharedEntryProvider.pendingApprovals.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -62,6 +65,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const PopupMenuItem(
               value: _MenuAction.allRecords,
               child: _MenuTile(icon: Icons.list, title: 'All Records'),
+            ),
+            PopupMenuItem(
+              value: _MenuAction.pendingRequests,
+              child: _MenuTile(
+                icon: Icons.how_to_vote,
+                title: 'Pending Requests',
+                badge: pendingCount > 0 ? '$pendingCount' : null,
+              ),
             ),
             const PopupMenuItem(
               value: _MenuAction.statistics,
@@ -289,7 +300,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           )
         else
-          ...recent.map((entry) => _RecentEntryTile(entry: entry, theme: theme)),
+          ...recent.map((entry) => _RecentEntryTile(
+                entry: entry,
+                theme: theme,
+                userId: provider.currentUserId,
+              )),
       ],
     );
   }
@@ -303,6 +318,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _MenuAction.allRecords:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const AllRecordsScreen()));
+        break;
+      case _MenuAction.pendingRequests:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const PendingRequestsScreen()));
         break;
       case _MenuAction.statistics:
         Navigator.push(context,
@@ -346,6 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 enum _MenuAction {
   allRecords,
+  pendingRequests,
   statistics,
   exportCsv,
   exportPdf,
@@ -357,8 +377,9 @@ enum _MenuAction {
 class _MenuTile extends StatelessWidget {
   final IconData icon;
   final String title;
+  final String? badge;
 
-  const _MenuTile({required this.icon, required this.title});
+  const _MenuTile({required this.icon, required this.title, this.badge});
 
   @override
   Widget build(BuildContext context) {
@@ -366,7 +387,23 @@ class _MenuTile extends StatelessWidget {
       children: [
         Icon(icon, size: 22),
         const SizedBox(width: 12),
-        Text(title),
+        Expanded(child: Text(title)),
+        if (badge != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.error,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              badge!,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -466,12 +503,17 @@ class _StatsCard extends StatelessWidget {
 class _RecentEntryTile extends StatelessWidget {
   final SharedEntry entry;
   final ThemeData theme;
+  final String userId;
 
-  const _RecentEntryTile({required this.entry, required this.theme});
+  const _RecentEntryTile({
+    required this.entry,
+    required this.theme,
+    required this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isBorrow = entry.type == EntryType.borrow;
+    final isBorrow = entry.entryTypeFor(userId) == EntryType.borrow;
     final entryColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
     final sign = isBorrow ? '-' : '+';
 

@@ -19,6 +19,8 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **file_picker** (save location picker for CSV)
 - **local_auth** (biometric authentication)
 - **flutter_secure_storage** (encrypted preference storage)
+- **qr_flutter** (QR code generation for invites)
+- **share_plus** (system share sheet for invite links)
 
 ## Implemented Features
 
@@ -31,7 +33,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Firestore user document created on first sign-in
 
 ### Shared Entry Management (CRUD)
-- `SharedEntry` model extending `BorrowLend` with `createdBy` and `participants` fields
+- `SharedEntry` model extending `BorrowLend` with `createdBy`, `participants`, `linkedUserId`, `linkedUserName`, and `approvalStatus` fields
 - Firestore collection: `shared_entries/{entryId}` — single source of truth, no duplication per user
 - Participants array of user IDs — entry appears for all participants via `ARRAY-CONTAINS` query
 - Default personal entries: entries without selected participants default to `participants: [currentUserId]`
@@ -41,12 +43,41 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Participant count badge shown on entries with multiple participants
 - Pull-to-refresh and loading/error states
 
-### UserPicker Widget
-- Multi-select user picker bottom sheet with search by name/email
-- Fetches all registered users from Firestore
-- Displays user avatar, display name, and email
-- Checkbox selection with confirm button showing participant count
-- Used in AddEditEntryScreen to assign participants to entries
+### UserSearchField Widget
+- Smart searchable text field that queries Firestore users by displayName or email
+- 300ms debounced search with autocomplete overlay
+- Loading, no-results, and error states in the overlay
+- Locks after a user is selected — read-only with primary tint and filled background
+- Clear button (X) resets the selection and allows re-searching
+- Shows invite options (QR Code / Share Link) when no users are found
+- Returns `selectedUserId` to parent via `onSelected` callback
+
+### Debt Linking
+- `linkedUserId` and `linkedUserName` fields on `SharedEntry` — links a debt to a specific user account
+- `approvalStatus` enum: `PENDING_APPROVAL`, `ACTIVE`, `REJECTED`
+- New debts with a linked user default to `approvalStatus: PENDING_APPROVAL`
+- Linked user is automatically added to the `participants` array for Firestore visibility
+- **Entry type inversion**: When User A creates a "borrow" entry linking to User B, it appears as a "lend" entry for User B (and vice versa) via `entryTypeFor(userId)`
+
+### Debt Approval Workflow
+- **PendingRequestsScreen** with two sections:
+  - **Waiting for approval**: Entries you created that are pending the linked user's approval
+  - **Needs your approval**: Entries others created linking to you — accept or reject
+- **Accept**: Sets `approvalStatus = ACTIVE` — entry now counts in dashboard/statistics
+- **Reject**: Sets `approvalStatus = REJECTED` — entry excluded from all calculations
+- Badge count on dashboard hamburger menu showing total pending requests
+
+### User Invitation System
+- When no users are found in search, shows **Invite by QR Code** and **Share Link** buttons
+- **`PendingInvite`** model with `token`, `inviteCode`, `createdBy`, `targetPersonName`, `status`, `createdAt`, `expiresAt`
+- **`InviteService`** creates invites in `pending_invites` Firestore collection
+- 32-char random token (internal) + 6-char uppercase invite code (human-readable)
+- 7-day expiration
+- **InvitePreviewScreen** displays:
+  - QR code (encodes `borrowtracker://invite?code=XXX`)
+  - Invite code with copy-to-clipboard button
+  - Share button (system share sheet with invite text)
+- Firestore security rules for `pending_invites` (creator CRUD, public read for code lookup)
 
 ### Dashboard
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
@@ -54,14 +85,15 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Recent entries list (last 5) with status chip and relative time
 - Empty state, pull-to-refresh, FAB for adding entries
 - **Redesigned AppBar**: centered logo icon (`Icons.account_balance_wallet`) + "Borrow Tracker" title, hamburger menu (`PopupMenuButton`) on the left with all navigation items, logout button on the right
-- **Hamburger menu items**: All Records, Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
-- **`_MenuTile`** widget: consistent icon + label rows in the popup menu
+- **Hamburger menu items**: All Records, Pending Requests (with badge), Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
+- **`_MenuTile`** widget: consistent icon + label rows in the popup menu with optional badge
+- Dashboard calculations exclude `PENDING_APPROVAL` and `REJECTED` entries
 
 ### All Records & Search / Filters
 - Scrollable list with popup menu (edit / mark paid / mark partial / delete)
 - Text search by person name (case-insensitive)
 - Status filter (Pending / Paid / Partial)
-- Type filter (Borrowed / Lent)
+- Type filter (Borrowed / Lent) — respects entry type inversion per user
 - Currency filter (dynamically populated)
 - Deadline filter (Has deadline / No deadline / Overdue / Next 7 days)
 - Bottom-sheet filter picker with active-chip highlighting
@@ -91,6 +123,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Debt History**: Curved line chart tracking net cumulative debt over time (borrow adds, lent subtracts)
 - **Smart labels**: Sparse axis labels avoid clutter; edge values hidden for cleaner look
 - **Empty state**: Friendly message when no entries exist
+- All charts respect entry type inversion per user via `entryTypeFor(userId)`
 - Powered by `fl_chart` 0.69+
 
 ### Material 3 UI
@@ -172,15 +205,16 @@ lib/
 ├── firebase_options.dart              # Firebase config (generated)
 ├── models/
 │   ├── user_model.dart                # User data model
-│   ├── borrow_lend.dart               # Borrow/lend entry model + enums
-│   ├── shared_entry_model.dart        # SharedEntry model with createdBy + participants
-│   └── reminder_settings.dart         # Notification settings model
+│   ├── borrow_lend.dart               # Borrow/lend entry model + enums (EntryType, EntryStatus, ApprovalStatus)
+│   ├── shared_entry_model.dart        # SharedEntry model with linked user fields + entryTypeFor()
+│   ├── reminder_settings.dart         # Notification settings model
+│   └── pending_invite_model.dart      # PendingInvite model for user invitations
 ├── theme/
 │   ├── app_theme.dart                 # AppTheme accessor + AppColors semantic tokens
 │   ├── light_theme.dart               # ThemeData for light mode
 │   └── dark_theme.dart                # ThemeData for dark mode
 ├── services/
-│   ├── auth_service.dart              # Firebase Auth operations + fetchAllUsers
+│   ├── auth_service.dart              # Firebase Auth operations + fetchAllUsers + searchUsers
 │   ├── entry_service.dart             # Legacy Firestore CRUD (per-user sub-collection)
 │   ├── shared_entry_service.dart      # Shared entries Firestore CRUD (ARRAY-CONTAINS query)
 │   ├── notification_service.dart      # flutter_local_notifications + WorkManager scheduling
@@ -188,20 +222,23 @@ lib/
 │   ├── connectivity_service.dart      # Monitors online/offline status via connectivity_plus
 │   ├── pdf_service.dart               # PDF generation with table + summary
 │   ├── csv_service.dart               # CSV generation with headers
-│   └── biometric_service.dart         # Biometric authentication via local_auth
+│   ├── biometric_service.dart         # Biometric authentication via local_auth
+│   └── invite_service.dart            # Pending invite CRUD + token/code generation
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Legacy entry state (per-user sub-collection)
-│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates
+│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
 │   └── theme_provider.dart            # ThemeMode persistence, cycle, current label
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
-│   ├── dashboard_screen.dart          # Summary cards, recent entries, nav
+│   ├── dashboard_screen.dart          # Summary cards, recent entries, nav with badge
 │   ├── all_records_screen.dart        # Full list with actions & filters
-│   ├── add_edit_entry_screen.dart     # Entry form with UserPicker integration
+│   ├── add_edit_entry_screen.dart     # Entry form with UserSearchField + invite integration
+│   ├── pending_requests_screen.dart   # Debt approval workflow (two sections)
+│   ├── invite_preview_screen.dart     # QR code + invite code + share/copy
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
 │   ├── appearance_settings_screen.dart # Theme selection (System / Light / Dark)
@@ -211,9 +248,10 @@ lib/
 │   └── home_screen.dart               # Simple welcome screen (unused in nav flow)
 ├── widgets/
 │   ├── offline_indicator.dart         # Orange banner shown when offline
-│   └── user_picker.dart               # Multi-select user picker for shared entries
+│   ├── user_picker.dart               # Multi-select user picker for shared entries
+│   └── user_search_field.dart         # Smart searchable field with invite fallback
 └── utils/
-    └── constants.dart                 # App-wide constants
+    └── constants.dart                 # App-wide constants (including pendingInvitesCollection)
 ```
 
 ## Foundation & Config
@@ -224,7 +262,9 @@ lib/
 - `shared_preferences` for first-run tracking, theme mode persistence
 - Firestore composite index on `shared_entries` (`participants` ASC + `createdAt` DESC)
 - Firestore security rules for `shared_entries` (participants read, creator delete, participant update)
+- Firestore security rules for `pending_invites` (authenticated read, creator CRUD)
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- None (all planned features implemented)
+- Deep links for invite acceptance (invite preview screen only — no deep link handler yet)
+- Background invite checking (invites expire silently — no notification to creator)

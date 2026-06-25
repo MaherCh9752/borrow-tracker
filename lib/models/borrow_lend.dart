@@ -2,6 +2,8 @@ enum EntryType { borrow, lend }
 
 enum EntryStatus { pending, paid, partial }
 
+enum ApprovalStatus { pendingApproval, active, rejected }
+
 class BorrowLend {
   final String id;
   final String personName;

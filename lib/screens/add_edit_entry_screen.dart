@@ -4,8 +4,9 @@ import '../models/borrow_lend.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shared_entry_provider.dart';
-import '../services/auth_service.dart';
-import '../widgets/user_picker.dart';
+import '../services/invite_service.dart';
+import '../widgets/user_search_field.dart';
+import 'invite_preview_screen.dart';
 
 class AddEditEntryScreen extends StatefulWidget {
   final SharedEntry? entry;
@@ -23,7 +24,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   final _personNameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
-  final _authService = AuthService();
+  final _inviteService = InviteService();
 
   late EntryType _type;
   late String _currency;
@@ -31,9 +32,14 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   late DateTime _createdAt;
   DateTime? _deadline;
   bool _isSaving = false;
+  String? _selectedPersonId;
+  String? _selectedPersonName;
 
-  List<String> _selectedParticipants = [];
-  Map<String, String> _participantNames = {};
+  /// The UID of the user selected via search field.
+  String? get selectedPersonId => _selectedPersonId;
+
+  /// The display name of the user selected via search field.
+  String? get selectedPersonName => _selectedPersonName;
 
   static const List<String> _currencies = ['USD', 'EUR', 'GBP', 'TND'];
 
@@ -49,22 +55,8 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     _status = e?.status ?? EntryStatus.pending;
     _createdAt = e?.createdAt ?? DateTime.now();
     _deadline = e?.deadline;
-
-    if (e != null) {
-      _selectedParticipants = List<String>.from(e.participants);
-      _loadParticipantNames();
-    }
-  }
-
-  Future<void> _loadParticipantNames() async {
-    final names = <String, String>{};
-    for (final uid in _selectedParticipants) {
-      final user = await _authService.fetchUserById(uid);
-      if (user != null) {
-        names[uid] = user.displayName ?? user.email;
-      }
-    }
-    if (mounted) setState(() => _participantNames = names);
+    _selectedPersonId = e?.linkedUserId;
+    _selectedPersonName = e?.linkedUserName;
   }
 
   @override
@@ -95,16 +87,34 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     }
   }
 
-  Future<void> _openUserPicker() async {
-    final currentUserId = context.read<AuthProvider>().user!.uid;
-    final result = await UserPicker.show(
-      context: context,
-      initiallySelected: _selectedParticipants,
-      currentUserId: currentUserId,
-    );
-    if (result != null && mounted) {
-      setState(() => _selectedParticipants = result);
-      _loadParticipantNames();
+  Future<void> _handleInvite() async {
+    final userId = context.read<AuthProvider>().user!.uid;
+    final personName = _personNameController.text.trim();
+    if (personName.isEmpty) return;
+
+    try {
+      final invite = await _inviteService.createInvite(
+        createdBy: userId,
+        targetPersonName: personName,
+      );
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => InvitePreviewScreen(
+              invite: invite,
+              targetPersonName: personName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[AddEditEntry] _handleInvite: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create invite')),
+        );
+      }
     }
   }
 
@@ -117,12 +127,6 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     try {
       final userId = context.read<AuthProvider>().user!.uid;
       final sharedEntryProvider = context.read<SharedEntryProvider>();
-
-      final participants = _selectedParticipants.isEmpty
-          ? [userId]
-          : _selectedParticipants.contains(userId)
-              ? _selectedParticipants
-              : [userId, ..._selectedParticipants];
 
       final entry = SharedEntry(
         id: widget.entry?.id ?? '',
@@ -137,7 +141,16 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
         deadline: _deadline,
         status: _status,
         createdBy: widget.isEditing ? widget.entry!.createdBy : userId,
-        participants: participants,
+        participants: [
+          userId,
+          if (_selectedPersonId != null && _selectedPersonId != userId)
+            _selectedPersonId!,
+        ],
+        linkedUserId: _selectedPersonId ?? widget.entry?.linkedUserId,
+        linkedUserName: _selectedPersonName ?? widget.entry?.linkedUserName,
+        approvalStatus: widget.isEditing
+            ? widget.entry!.approvalStatus
+            : ApprovalStatus.pendingApproval,
       );
 
       bool success;
@@ -177,15 +190,15 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
             children: [
               _buildSectionLabel(theme, 'Person'),
               const SizedBox(height: 8),
-              TextFormField(
+              UserSearchField(
                 controller: _personNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Person Name',
-                  hintText: 'Enter the person\'s name',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
-                ),
-                textCapitalization: TextCapitalization.words,
+                onSelected: (userId) {
+                  setState(() {
+                    _selectedPersonId = userId;
+                    _selectedPersonName = _personNameController.text.trim();
+                  });
+                },
+                onInviteTap: _handleInvite,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Name is required.';
                   return null;
@@ -322,10 +335,6 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 20),
-              _buildSectionLabel(theme, 'Participants'),
-              const SizedBox(height: 8),
-              _buildParticipantSection(theme),
               const SizedBox(height: 32),
               SizedBox(
                 height: 48,
@@ -348,49 +357,6 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildParticipantSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_selectedParticipants.isNotEmpty) ...[
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: _selectedParticipants.map((uid) {
-              final name = _participantNames[uid] ?? uid.substring(0, 6);
-              return Chip(
-                label: Text(name, style: const TextStyle(fontSize: 13)),
-                deleteIcon: const Icon(Icons.close, size: 18),
-                onDeleted: () {
-                  setState(() => _selectedParticipants.remove(uid));
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 8),
-        ],
-        OutlinedButton.icon(
-          onPressed: _openUserPicker,
-          icon: const Icon(Icons.group_add, size: 20),
-          label: Text(
-            _selectedParticipants.isEmpty
-                ? 'Add Participants (Optional)'
-                : 'Edit Participants',
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          _selectedParticipants.isEmpty
-              ? 'Entry will be personal (only you)'
-              : 'Shared with ${_selectedParticipants.length} participant${_selectedParticipants.length == 1 ? '' : 's'}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
     );
   }
 

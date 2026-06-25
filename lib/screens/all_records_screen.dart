@@ -362,7 +362,7 @@ class _EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isBorrow = entry.type == EntryType.borrow;
+    final isBorrow = entry.entryTypeFor(currentUserId) == EntryType.borrow;
     final amountColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
     final sign = isBorrow ? '-' : '+';
 

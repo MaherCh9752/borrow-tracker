@@ -3,6 +3,7 @@ class AppConstants {
   static const String usersCollection = 'users';
   static const String entriesSubCollection = 'borrowLendEntries';
   static const String sharedEntriesCollection = 'shared_entries';
+  static const String pendingInvitesCollection = 'pending_invites';
   static const String notificationChannelId = 'deadline_reminders';
   static const String notificationChannelName = 'Deadline Reminders';
   static const String notificationChannelDescription =

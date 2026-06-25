@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/constants.dart';
@@ -11,7 +12,9 @@ class StatisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = context.watch<SharedEntryProvider>().entries;
+    final provider = context.watch<SharedEntryProvider>();
+    final entries = provider.activeEntries;
+    final userId = provider.currentUserId;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -33,7 +36,7 @@ class StatisticsScreen extends StatelessWidget {
                   title: 'Monthly Totals',
                   child: SizedBox(
                     height: 220,
-                    child: _MonthlyBarChart(entries: entries),
+                    child: _MonthlyBarChart(entries: entries, userId: userId),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -51,7 +54,7 @@ class StatisticsScreen extends StatelessWidget {
                   title: 'Debt History',
                   child: SizedBox(
                     height: 220,
-                    child: _DebtLineChart(entries: entries),
+                    child: _DebtLineChart(entries: entries, userId: userId),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -98,9 +101,10 @@ class _Section extends StatelessWidget {
 }
 
 class _MonthlyBarChart extends StatelessWidget {
-  final List<BorrowLend> entries;
+  final List<SharedEntry> entries;
+  final String userId;
 
-  const _MonthlyBarChart({required this.entries});
+  const _MonthlyBarChart({required this.entries, required this.userId});
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +125,7 @@ class _MonthlyBarChart extends StatelessWidget {
           month: entry.createdAt.month,
         ),
       );
-      if (entry.type == EntryType.borrow) {
+      if (entry.entryTypeFor(userId) == EntryType.borrow) {
         total.borrowed += entry.amount;
       } else {
         total.lent += entry.amount;
@@ -267,7 +271,7 @@ class _MonthlyBarChart extends StatelessWidget {
 }
 
 class _PaidPieChart extends StatelessWidget {
-  final List<BorrowLend> entries;
+  final List<SharedEntry> entries;
 
   const _PaidPieChart({required this.entries});
 
@@ -348,9 +352,10 @@ class _PaidPieChart extends StatelessWidget {
 }
 
 class _DebtLineChart extends StatelessWidget {
-  final List<BorrowLend> entries;
+  final List<SharedEntry> entries;
+  final String userId;
 
-  const _DebtLineChart({required this.entries});
+  const _DebtLineChart({required this.entries, required this.userId});
 
   @override
   Widget build(BuildContext context) {
@@ -360,14 +365,14 @@ class _DebtLineChart extends StatelessWidget {
 
     final primaryCurrency = AppConstants.defaultCurrency;
 
-    final sorted = List<BorrowLend>.from(entries)
+    final sorted = List<SharedEntry>.from(entries)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     double cumulative = 0;
     final spots = <FlSpot>[];
     for (int i = 0; i < sorted.length; i++) {
       final entry = sorted[i];
-      if (entry.type == EntryType.borrow) {
+      if (entry.entryTypeFor(userId) == EntryType.borrow) {
         cumulative += entry.amount;
       } else {
         cumulative -= entry.amount;

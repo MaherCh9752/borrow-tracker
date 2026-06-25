@@ -105,6 +105,26 @@ class AuthService {
         .toList();
   }
 
+  /// Searches users by displayName or email (case-insensitive contains).
+  /// Returns up to [limit] results.
+  Future<List<UserModel>> searchUsers(String query, {int limit = 10}) async {
+    if (query.trim().isEmpty) return [];
+    final q = query.toLowerCase();
+    final snapshot =
+        await _firestore.collection(AppConstants.usersCollection).get();
+    final results = <UserModel>[];
+    for (final doc in snapshot.docs) {
+      final user = UserModel.fromMap(doc.data());
+      final name = (user.displayName ?? '').toLowerCase();
+      final email = user.email.toLowerCase();
+      if (name.contains(q) || email.contains(q)) {
+        results.add(user);
+        if (results.length >= limit) break;
+      }
+    }
+    return results;
+  }
+
   /// Fetches a single user by UID.
   Future<UserModel?> fetchUserById(String uid) async {
     final doc =

@@ -1,6 +1,6 @@
 # Borrow Tracker
 
-A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, local notifications, offline support, shared entries between users, and a polished Material 3 UI.
+A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, local notifications, offline support, shared entries between users, debt linking with approval workflow, and a polished Material 3 UI.
 
 ---
 
@@ -9,12 +9,15 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 | Feature | Description |
 |---------|-------------|
 | Authentication | Email/password sign-up, sign-in, password reset |
-| Shared Entries | Entries shared between multiple users — single source of truth |
+| User Search | Smart searchable field — find users by name or email |
+| Debt Linking | Link debts to specific user accounts with approval workflow |
+| Approval Workflow | Accept or reject debts — entries only count when active |
+| User Invites | QR code + shareable invite code for non-registered users |
 | Entry Management | Full CRUD with real-time Firestore sync |
-| Dashboard | Summary cards, stats, recent entries |
+| Dashboard | Summary cards, stats, recent entries, pending request badge |
 | Search & Filters | Text search, status/type/currency/deadline filters |
 | Notifications | In-app + background reminders for deadlines |
-| Statistics | Bar, pie, and line charts via fl_chart |
+| Statistics | Bar, pie, and line charts (respects entry type per user) |
 | Dark Mode | Light / Dark / System theme with persistence |
 | Offline Support | Full offline CRUD with automatic sync |
 | PDF Export | Landscape A4 table with summary |
@@ -72,101 +75,106 @@ flutter run
 
 ---
 
-### 2. Shared Entries (Multi-User)
+### 2. User Search & Debt Linking
 
-This is the core collaboration feature. Entries can be shared between multiple users — each entry lives once in Firestore and appears for all participants.
+The person name field is now a smart search field that finds registered users.
 
-#### Creating a Shared Entry
+| Action | Steps |
+|--------|-------|
+| Search for a user | Type a name or email → suggestions appear after 2+ characters |
+| Select a user | Tap a suggestion → field locks with the user's name |
+| Clear selection | Tap the **X** button → field resets to search mode |
+| No users found | Invite options appear (QR Code / Share Link) |
+
+**Try this:**
+1. Tap **+** to add an entry
+2. In the **Person** field, type a name of a registered user
+3. Select them from the dropdown — the field locks
+4. Complete the form and save
+5. The entry now links to that user's account
+
+---
+
+### 3. Debt Approval Workflow
+
+When you link a debt to another user, it starts as **Pending Approval** and must be accepted before it counts in totals.
+
+#### Creating a Linked Entry
 
 1. Sign in as **User A**
-2. Tap the **+** FAB on the dashboard
-3. Fill in the entry form (person name, amount, type, etc.)
-4. Scroll to the **Participants** section
-5. Tap **Add Participants**
-6. The user picker opens — search by name or email
-7. Select **User B** (checkbox toggles)
-8. Tap **Confirm** — you'll see User B listed as a participant
-9. Tap **Add Entry**
+2. Tap **+** → search and select **User B** in the Person field
+3. Fill in amount, type, deadline, etc.
+4. Tap **Add Entry**
+5. The entry is created with `approvalStatus: PENDING_APPROVAL`
 
-**Result:** The entry now appears on both User A's and User B's dashboards.
+#### Accepting or Rejecting
 
-#### Viewing Shared Entries
+1. Sign in as **User B**
+2. Open the hamburger menu → **Pending Requests** (shows badge count)
+3. Under **"Needs your approval"**, find the entry
+4. Tap **Accept** → entry becomes `ACTIVE` and appears in dashboard/statistics
+5. Or tap **Reject** → entry is excluded from all calculations
 
-- Both users see the same entry on their dashboard
-- Entries with multiple participants show a **group badge** (e.g., `👥 2`) on the All Records screen
-- The creator's name is shown in the entry details
+#### Viewing Your Own Pending Entries
 
-#### Editing Shared Entries
+1. Open **Pending Requests** from the menu
+2. Under **"Waiting for approval"**, see entries you created that are awaiting the other person's choice
+3. These show a status indicator but no action buttons
 
-1. Either User A or User B can edit the entry
-2. Tap **⋮** → **Edit** on any shared entry
-3. Make changes (amount, status, notes, etc.)
-4. Tap **Update Entry**
-5. Both users see the update in real-time
+#### Entry Type Inversion
 
-#### Status Changes
+When User A creates a "I Borrowed" entry linking to User B:
+- User A sees it as **"I Borrowed"** (their perspective)
+- User B sees it as **"I Lent"** (their perspective)
 
-Any participant can change the status:
-- Tap **⋮** → **Mark Paid** → entry status updates for everyone
-- Tap **⋮** → **Mark Partial** → entry status updates for everyone
-
-#### Deleting Entries
-
-- **Only the creator** can delete an entry
-- If you're not the creator, the **Delete** option is hidden from the menu
-- Creator taps **⋮** → **Delete** → confirm → entry removed for all participants
-
-#### Personal Entries (No Sharing)
-
-- If you don't select any participants, the entry is personal
-- Only you can see it
-- The form shows "Entry will be personal (only you)"
-
-#### Permissions Summary
-
-| Action | Creator | Participant |
-|--------|---------|-------------|
-| View entry | ✅ | ✅ |
-| Edit entry | ✅ | ✅ |
-| Mark paid/partial | ✅ | ✅ |
-| Delete entry | ✅ | ❌ (hidden) |
+This applies everywhere — dashboard, all records, and statistics charts.
 
 ---
 
-### 3. First-Run Notification Prompt
+### 4. User Invitation System
 
-On the very first launch (before sign-in), a dialog asks to enable notifications.
+When you search for a user who isn't registered yet:
 
-- **Enable** → OS permission dialogs appear → after login, notifications are auto-activated
-- **Skip** → enable later from the dashboard menu
-- This dialog only shows **once per device**
+1. Type a name in the Person field → **"No users found"**
+2. Two buttons appear: **QR Code** and **Share Link**
+3. Tap either → an invite is created and the **Invite Preview** screen opens
+4. The screen shows:
+   - **QR code** — scan to accept the invite
+   - **Invite code** — 6-character code (e.g. `XK7M2Q`)
+   - **Copy Code** button — copies to clipboard
+   - **Share Invite** button — opens system share sheet
+
+**Invite details:**
+- Expires in 7 days
+- Stored in Firestore `pending_invites` collection
+- Creator can see their pending invites
 
 ---
 
-### 4. Dashboard
+### 5. Dashboard
 
 The first screen after sign-in.
 
 | Element | What to look for |
 |---------|-----------------|
-| Total Borrowed card | Orange card — shows total in TND, updates as you add borrow entries |
-| Total Lent card | Teal card — shows total in TND, updates as you add lend entries |
+| Total Borrowed card | Orange card — shows total in TND (active entries only) |
+| Total Lent card | Teal card — shows total in TND (active entries only) |
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
-| Recent Entries | Last 5 entries with name, amount, currency, status chip, and relative time |
+| Recent Entries | Last 5 entries with name, amount, currency, status chip |
+| Pending Requests badge | Red badge on menu icon showing total pending count |
 | Pull to refresh | Swipe down to reload from Firestore |
 
 Tap the **+** FAB to add your first entry.
 
 ---
 
-### 5. Navigation — Hamburger Menu
-
-The dashboard uses a clean hamburger menu for navigation:
+### 6. Navigation — Hamburger Menu
 
 | Menu Item | Where it goes |
 |-----------|--------------|
 | All Records | Full list with search, filters, and actions |
+| Pending Requests | Debt approval workflow (with badge count) |
 | Statistics | Three interactive charts |
 | Export to CSV | Preview and save CSV file |
 | Export to PDF | Preview, share, or print PDF |
@@ -176,13 +184,13 @@ The dashboard uses a clean hamburger menu for navigation:
 
 ---
 
-### 6. Add / Edit Entry
+### 7. Add / Edit Entry
 
 Tap the **+** FAB on the dashboard.
 
 | Field | Required | Notes |
 |-------|----------|-------|
-| Person Name | Yes | Free text |
+| Person | Yes | Searchable field — type to find users, or enter any name |
 | Type | Yes | **I Borrowed** or **I Lent** (segmented button) |
 | Amount | Yes | Must be > 0, supports 3 decimal places |
 | Currency | Yes | TND (default), USD, EUR, GBP |
@@ -190,17 +198,16 @@ Tap the **+** FAB on the dashboard.
 | Date | Yes | Defaults to today |
 | Deadline | No | Used by notification reminders |
 | Notes | No | Free text |
-| Participants | No | Tap "Add Participants" to share with other users |
 
 **Try this:**
 - Add a borrow entry with a deadline 3 days from now
 - Add a lend entry marked as Paid
-- Add a shared entry with another user
+- Add a linked entry to another user → check Pending Requests
 - Edit any field and save — the list updates in real time
 
 ---
 
-### 7. All Records & Filters
+### 8. All Records & Filters
 
 Open via the hamburger menu → **All Records**.
 
@@ -219,7 +226,7 @@ Open via the hamburger menu → **All Records**.
 
 ---
 
-### 8. Statistics
+### 9. Statistics
 
 Open via the hamburger menu → **Statistics**.
 
@@ -229,6 +236,8 @@ Open via the hamburger menu → **Statistics**.
 | Payment Status | Pie chart — green = paid, orange = unpaid with percentages |
 | Debt History | Curved line chart — net cumulative debt over time |
 
+All charts respect entry type inversion — each user sees entries from their own perspective.
+
 **Edge cases:**
 - Empty state → "Add some entries to see statistics."
 - Single entry → pie shows 100% one color, line is flat
@@ -236,7 +245,7 @@ Open via the hamburger menu → **Statistics**.
 
 ---
 
-### 9. Notifications
+### 10. Notifications
 
 Open via the hamburger menu → **Notifications**.
 
@@ -261,7 +270,7 @@ Open via the hamburger menu → **Notifications**.
 
 ---
 
-### 10. Offline Support
+### 11. Offline Support
 
 The app works fully offline. Firestore queues all changes locally and syncs when reconnected.
 
@@ -277,7 +286,7 @@ The app works fully offline. Firestore queues all changes locally and syncs when
 
 ---
 
-### 11. Export to PDF
+### 12. Export to PDF
 
 Open via the hamburger menu → **Export to PDF**.
 
@@ -292,7 +301,7 @@ Open via the hamburger menu → **Export to PDF**.
 
 ---
 
-### 12. Export to CSV
+### 13. Export to CSV
 
 Open via the hamburger menu → **Export to CSV**.
 
@@ -307,7 +316,7 @@ Open via the hamburger menu → **Export to CSV**.
 
 ---
 
-### 13. Dark Mode
+### 14. Dark Mode
 
 Open via the hamburger menu → **Appearance**.
 
@@ -324,7 +333,7 @@ Open via the hamburger menu → **Appearance**.
 
 ---
 
-### 14. Biometric App Lock
+### 15. Biometric App Lock
 
 Open via the hamburger menu → **Security**.
 
@@ -346,12 +355,12 @@ Open via the hamburger menu → **Security**.
 lib/
 ├── main.dart                          # Entry point, providers, WorkManager init
 ├── firebase_options.dart              # Firebase config (generated)
-├── models/                            # Data models (BorrowLend, SharedEntry, User, ReminderSettings)
+├── models/                            # Data models (BorrowLend, SharedEntry, User, ReminderSettings, PendingInvite)
 ├── theme/                             # AppTheme, AppColors, light/dark ThemeData
-├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric
+├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric, Invite
 ├── providers/                         # Auth, Entry, SharedEntry, Notification, Connectivity, Security, Theme
-├── screens/                           # All UI screens
-├── widgets/                           # Reusable widgets (OfflineIndicator, UserPicker)
+├── screens/                           # All UI screens (including PendingRequests, InvitePreview)
+├── widgets/                           # Reusable widgets (OfflineIndicator, UserPicker, UserSearchField)
 └── utils/                             # Constants
 ```
 
@@ -371,6 +380,8 @@ lib/
 | Offline | Firestore persistence + connectivity_plus |
 | PDF | pdf + printing |
 | CSV | csv + file_picker |
+| QR Codes | qr_flutter |
+| Sharing | share_plus |
 | Biometrics | local_auth + flutter_secure_storage |
 | Persistence | shared_preferences (theme, first-run flags) |
 

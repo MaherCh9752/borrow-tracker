@@ -15,6 +15,7 @@ class SharedEntryProvider extends ChangeNotifier {
   List<SharedEntry> _entries = [];
   bool _isLoading = false;
   String? _error;
+  String _currentUserId = '';
 
   String _searchQuery = '';
   EntryStatus? _statusFilter;
@@ -28,6 +29,30 @@ class SharedEntryProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasEntries => _entries.isNotEmpty;
+  String get currentUserId => _currentUserId;
+
+  /// Entries with approvalStatus == ACTIVE (excludes PENDING_APPROVAL and REJECTED).
+  List<SharedEntry> get activeEntries => _entries
+      .where((e) => e.approvalStatus == ApprovalStatus.active)
+      .toList();
+
+  /// Entries where the current user is the linked user and status is PENDING_APPROVAL.
+  /// These need the current user's approval.
+  List<SharedEntry> get pendingApprovals => _entries
+      .where((e) =>
+          e.linkedUserId == _currentUserId &&
+          e.createdBy != _currentUserId &&
+          e.approvalStatus == ApprovalStatus.pendingApproval)
+      .toList();
+
+  /// Entries created by the current user that are still PENDING_APPROVAL.
+  /// These are waiting for the linked user to accept/reject.
+  List<SharedEntry> get pendingFromMe => _entries
+      .where((e) =>
+          e.createdBy == _currentUserId &&
+          e.linkedUserId != null &&
+          e.approvalStatus == ApprovalStatus.pendingApproval)
+      .toList();
 
   String get searchQuery => _searchQuery;
   EntryStatus? get statusFilter => _statusFilter;
@@ -38,7 +63,7 @@ class SharedEntryProvider extends ChangeNotifier {
   int get activeFilterCount => _activeFilterCount;
 
   List<SharedEntry> get filteredEntries {
-    var result = _entries.toList();
+    var result = activeEntries.toList();
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -88,29 +113,33 @@ class SharedEntryProvider extends ChangeNotifier {
     return result;
   }
 
-  double get totalBorrowed => _entries
-      .where((e) => e.type == EntryType.borrow && e.status != EntryStatus.paid)
+  double get totalBorrowed => activeEntries
+      .where((e) =>
+          e.entryTypeFor(_currentUserId) == EntryType.borrow &&
+          e.status != EntryStatus.paid)
       .fold(0.0, (sum, e) => sum + e.amount);
 
-  double get totalLent => _entries
-      .where((e) => e.type == EntryType.lend && e.status != EntryStatus.paid)
+  double get totalLent => activeEntries
+      .where((e) =>
+          e.entryTypeFor(_currentUserId) == EntryType.lend &&
+          e.status != EntryStatus.paid)
       .fold(0.0, (sum, e) => sum + e.amount);
 
-  double get totalBorrowedAll => _entries
-      .where((e) => e.type == EntryType.borrow)
+  double get totalBorrowedAll => activeEntries
+      .where((e) => e.entryTypeFor(_currentUserId) == EntryType.borrow)
       .fold(0.0, (sum, e) => sum + e.amount);
 
-  double get totalLentAll => _entries
-      .where((e) => e.type == EntryType.lend)
+  double get totalLentAll => activeEntries
+      .where((e) => e.entryTypeFor(_currentUserId) == EntryType.lend)
       .fold(0.0, (sum, e) => sum + e.amount);
 
   List<SharedEntry> get pendingEntries =>
-      _entries.where((e) => e.status == EntryStatus.pending).toList();
+      activeEntries.where((e) => e.status == EntryStatus.pending).toList();
 
   List<SharedEntry> get upcomingDeadlines {
     final now = DateTime.now();
     final weekFromNow = now.add(const Duration(days: 7));
-    return _entries
+    return activeEntries
         .where((e) =>
             e.deadline != null &&
             e.deadline!.isAfter(now) &&
@@ -121,7 +150,7 @@ class SharedEntryProvider extends ChangeNotifier {
   }
 
   List<SharedEntry> get recentEntries {
-    final sorted = List<SharedEntry>.from(_entries)
+    final sorted = List<SharedEntry>.from(activeEntries)
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return sorted.take(5).toList();
   }
@@ -185,6 +214,7 @@ class SharedEntryProvider extends ChangeNotifier {
   /// Starts listening to shared entries for the given [userId].
   void listenToEntries(String userId) {
     _subscription?.cancel();
+    _currentUserId = userId;
     _isLoading = true;
     notifyListeners();
 

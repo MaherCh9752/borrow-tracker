@@ -4,6 +4,9 @@ class SharedEntry extends BorrowLend {
   final String createdBy;
   final List<String> participants;
   final DateTime? updatedAt;
+  final String? linkedUserId;
+  final String? linkedUserName;
+  final ApprovalStatus approvalStatus;
 
   SharedEntry({
     required super.id,
@@ -18,6 +21,9 @@ class SharedEntry extends BorrowLend {
     required this.createdBy,
     required this.participants,
     this.updatedAt,
+    this.linkedUserId,
+    this.linkedUserName,
+    this.approvalStatus = ApprovalStatus.pendingApproval,
   });
 
   @override
@@ -34,6 +40,9 @@ class SharedEntry extends BorrowLend {
     String? createdBy,
     List<String>? participants,
     DateTime? updatedAt,
+    String? linkedUserId,
+    String? linkedUserName,
+    ApprovalStatus? approvalStatus,
   }) {
     return SharedEntry(
       id: id ?? this.id,
@@ -48,6 +57,9 @@ class SharedEntry extends BorrowLend {
       createdBy: createdBy ?? this.createdBy,
       participants: participants ?? this.participants,
       updatedAt: updatedAt ?? this.updatedAt,
+      linkedUserId: linkedUserId ?? this.linkedUserId,
+      linkedUserName: linkedUserName ?? this.linkedUserName,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
     );
   }
 
@@ -65,6 +77,9 @@ class SharedEntry extends BorrowLend {
       'createdBy': createdBy,
       'participants': participants,
       'updatedAt': DateTime.now().toIso8601String(),
+      'linkedUserId': linkedUserId,
+      'linkedUserName': linkedUserName,
+      'approvalStatus': approvalStatus.name,
     };
   }
 
@@ -86,6 +101,9 @@ class SharedEntry extends BorrowLend {
       updatedAt: map['updatedAt'] != null
           ? DateTime.tryParse(map['updatedAt'])
           : null,
+      linkedUserId: map['linkedUserId'],
+      linkedUserName: map['linkedUserName'],
+      approvalStatus: _parseApprovalStatus(map['approvalStatus']),
     );
   }
 
@@ -111,5 +129,27 @@ class SharedEntry extends BorrowLend {
       default:
         return EntryStatus.pending;
     }
+  }
+
+  static ApprovalStatus _parseApprovalStatus(String? value) {
+    switch (value) {
+      case 'pendingApproval':
+        return ApprovalStatus.pendingApproval;
+      case 'active':
+        return ApprovalStatus.active;
+      case 'rejected':
+        return ApprovalStatus.rejected;
+      default:
+        return ApprovalStatus.pendingApproval;
+    }
+  }
+
+  /// Returns the entry type from [userId]'s perspective.
+  /// If the viewer is the linked user, borrow/lend is inverted.
+  EntryType entryTypeFor(String userId) {
+    if (linkedUserId != null && linkedUserId == userId) {
+      return type == EntryType.borrow ? EntryType.lend : EntryType.borrow;
+    }
+    return type;
   }
 }
