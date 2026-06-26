@@ -359,6 +359,14 @@ class _EntryCard extends StatelessWidget {
 
   bool get _canDelete => entry.createdBy == currentUserId;
 
+  String? get _relationLabel {
+    final isCreator = entry.createdBy == currentUserId;
+    if (isCreator) {
+      return entry.linkedUserName != null ? 'with ${entry.linkedUserName}' : null;
+    }
+    return entry.createdByName != null ? 'from ${entry.createdByName}' : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -423,6 +431,18 @@ class _EntryCard extends StatelessWidget {
             const SizedBox(height: 2),
             Row(
               children: [
+                if (_relationLabel != null) ...[
+                  Icon(Icons.person_outline, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text(
+                    _relationLabel!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 if (entry.deadline != null) ...[
                   Icon(Icons.event, size: 14, color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),

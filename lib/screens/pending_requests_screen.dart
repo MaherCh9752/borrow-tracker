@@ -177,25 +177,25 @@ class _WaitingCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.personName,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.personName,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            'Linked to ${entry.linkedUserName ?? 'them'} — waiting for approval',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Waiting for ${entry.linkedUserName ?? 'them'} to approve',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
                 Icon(
                   Icons.hourglass_top,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -281,7 +281,7 @@ class _ApprovalCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'Created by ${entry.linkedUserName ?? 'Unknown'}',
+                        'Created by ${entry.createdByName ?? 'Unknown'}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

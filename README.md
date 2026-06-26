@@ -14,7 +14,8 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 | Approval Workflow | Accept or reject debts — entries only count when active |
 | User Invites | QR code + shareable invite code for non-registered users |
 | Entry Management | Full CRUD with real-time Firestore sync |
-| Dashboard | Summary cards, stats, recent entries, pending request badge |
+| Dashboard | Summary cards, net balance, stats, recent entries, pending request badge |
+| Net Balance | See who owes you and who you owe at a glance |
 | Search & Filters | Text search, status/type/currency/deadline filters |
 | Notifications | In-app + background reminders for deadlines |
 | Statistics | Bar, pie, and line charts (respects entry type per user) |
@@ -111,7 +112,7 @@ When you link a debt to another user, it starts as **Pending Approval** and must
 
 1. Sign in as **User B**
 2. Open the hamburger menu → **Pending Requests** (shows badge count)
-3. Under **"Needs your approval"**, find the entry
+3. Under **"Needs your approval"**, find the entry — it shows **"Created by User A"** so you know who created it
 4. Tap **Accept** → entry becomes `ACTIVE` and appears in dashboard/statistics
 5. Or tap **Reject** → entry is excluded from all calculations
 
@@ -119,15 +120,15 @@ When you link a debt to another user, it starts as **Pending Approval** and must
 
 1. Open **Pending Requests** from the menu
 2. Under **"Waiting for approval"**, see entries you created that are awaiting the other person's choice
-3. These show a status indicator but no action buttons
+3. These show the linked user's name and a status indicator (no action buttons)
 
 #### Entry Type Inversion
 
 When User A creates a "I Borrowed" entry linking to User B:
-- User A sees it as **"I Borrowed"** (their perspective)
-- User B sees it as **"I Lent"** (their perspective)
+- User A sees it as **"I Borrowed"** with subtitle **"with User B"**
+- User B sees it as **"I Lent"** with subtitle **"from User A"**
 
-This applies everywhere — dashboard, all records, and statistics charts.
+This applies everywhere — dashboard recent entries, all records, and statistics charts.
 
 ---
 
@@ -159,9 +160,10 @@ The first screen after sign-in.
 |---------|-----------------|
 | Total Borrowed card | Orange card — shows total in TND (active entries only) |
 | Total Lent card | Teal card — shows total in TND (active entries only) |
+| Net Balance card | Positive = others owe you, Negative = you owe others, Zero = settled |
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
-| Recent Entries | Last 5 entries with name, amount, currency, status chip |
+| Recent Entries | Last 5 entries with name, amount, currency, status chip, and relation ("from X" / "with X") |
 | Pending Requests badge | Red badge on menu icon showing total pending count |
 | Pull to refresh | Swipe down to reload from Firestore |
 

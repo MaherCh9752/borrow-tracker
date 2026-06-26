@@ -2,6 +2,7 @@ import 'borrow_lend.dart';
 
 class SharedEntry extends BorrowLend {
   final String createdBy;
+  final String? createdByName;
   final List<String> participants;
   final DateTime? updatedAt;
   final String? linkedUserId;
@@ -19,6 +20,7 @@ class SharedEntry extends BorrowLend {
     super.deadline,
     super.status = EntryStatus.pending,
     required this.createdBy,
+    this.createdByName,
     required this.participants,
     this.updatedAt,
     this.linkedUserId,
@@ -38,6 +40,7 @@ class SharedEntry extends BorrowLend {
     DateTime? deadline,
     EntryStatus? status,
     String? createdBy,
+    String? createdByName,
     List<String>? participants,
     DateTime? updatedAt,
     String? linkedUserId,
@@ -55,6 +58,7 @@ class SharedEntry extends BorrowLend {
       deadline: deadline ?? this.deadline,
       status: status ?? this.status,
       createdBy: createdBy ?? this.createdBy,
+      createdByName: createdByName ?? this.createdByName,
       participants: participants ?? this.participants,
       updatedAt: updatedAt ?? this.updatedAt,
       linkedUserId: linkedUserId ?? this.linkedUserId,
@@ -75,6 +79,7 @@ class SharedEntry extends BorrowLend {
       'deadline': deadline?.toIso8601String(),
       'status': status.name,
       'createdBy': createdBy,
+      'createdByName': createdByName,
       'participants': participants,
       'updatedAt': DateTime.now().toIso8601String(),
       'linkedUserId': linkedUserId,
@@ -97,6 +102,7 @@ class SharedEntry extends BorrowLend {
           : null,
       status: _parseEntryStatus(map['status']),
       createdBy: map['createdBy'] ?? '',
+      createdByName: map['createdByName'],
       participants: List<String>.from(map['participants'] ?? []),
       updatedAt: map['updatedAt'] != null
           ? DateTime.tryParse(map['updatedAt'])

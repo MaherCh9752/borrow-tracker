@@ -32,8 +32,14 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Form validation and FirebaseAuthException error mapping
 - Firestore user document created on first sign-in
 
+### Net Balance Calculation
+- **`netBalance`** getter: overall net debt (totalLent - totalBorrowed) — positive = others owe you, negative = you owe others, zero = settled
+- **`calculateNetBalance(otherUserId)`**: net balance with a specific user
+- **`netBalancesByUser`**: map of all user IDs to their net balance
+- **Dashboard Net Balance card**: shows amount with color-coded label ("Others owe you" / "You owe others" / "Settled")
+
 ### Shared Entry Management (CRUD)
-- `SharedEntry` model extending `BorrowLend` with `createdBy`, `participants`, `linkedUserId`, `linkedUserName`, and `approvalStatus` fields
+- `SharedEntry` model extending `BorrowLend` with `createdBy`, `createdByName`, `participants`, `linkedUserId`, `linkedUserName`, and `approvalStatus` fields
 - Firestore collection: `shared_entries/{entryId}` — single source of truth, no duplication per user
 - Participants array of user IDs — entry appears for all participants via `ARRAY-CONTAINS` query
 - Default personal entries: entries without selected participants default to `participants: [currentUserId]`
@@ -61,8 +67,8 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 
 ### Debt Approval Workflow
 - **PendingRequestsScreen** with two sections:
-  - **Waiting for approval**: Entries you created that are pending the linked user's approval
-  - **Needs your approval**: Entries others created linking to you — accept or reject
+  - **Waiting for approval**: Entries you created that are pending the linked user's approval — shows linked user name
+  - **Needs your approval**: Entries others created linking to you — shows creator's name (`createdByName`) with accept/reject buttons
 - **Accept**: Sets `approvalStatus = ACTIVE` — entry now counts in dashboard/statistics
 - **Reject**: Sets `approvalStatus = REJECTED` — entry excluded from all calculations
 - Badge count on dashboard hamburger menu showing total pending requests
@@ -81,8 +87,9 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 
 ### Dashboard
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
+- **Net Balance card**: Shows net debt (positive = others owe you, negative = you owe others, zero = settled)
 - Stats cards: Pending count, Upcoming deadlines (next 7 days)
-- Recent entries list (last 5) with status chip and relative time
+- Recent entries list (last 5) with status chip, relative time, and relation label ("from X" / "with X")
 - Empty state, pull-to-refresh, FAB for adding entries
 - **Redesigned AppBar**: centered logo icon (`Icons.account_balance_wallet`) + "Borrow Tracker" title, hamburger menu (`PopupMenuButton`) on the left with all navigation items, logout button on the right
 - **Hamburger menu items**: All Records, Pending Requests (with badge), Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
@@ -98,6 +105,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Deadline filter (Has deadline / No deadline / Overdue / Next 7 days)
 - Bottom-sheet filter picker with active-chip highlighting
 - Clear-all button, distinct empty states
+- Relation label per entry: "from X" (other user's entry) or "with X" (your entry)
 
 ### Notifications
 - **`ReminderSettings`** model persisted in Firestore (`reminderSettings` map inside user doc):
@@ -227,7 +235,7 @@ lib/
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Legacy entry state (per-user sub-collection)
-│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals
+│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals, netBalance
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth

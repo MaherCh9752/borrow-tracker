@@ -187,6 +187,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 8),
         _buildSummaryRow(theme, sharedEntryProvider),
         const SizedBox(height: 16),
+        _buildNetBalanceCard(theme, sharedEntryProvider),
+        const SizedBox(height: 16),
         _buildStatsRow(theme, sharedEntryProvider),
         const SizedBox(height: 24),
         _buildRecentSection(theme, sharedEntryProvider),
@@ -231,6 +233,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNetBalanceCard(ThemeData theme, SharedEntryProvider provider) {
+    final balance = provider.netBalance;
+    final isPositive = balance > 0;
+    final isZero = balance == 0;
+    final color = isZero
+        ? theme.colorScheme.outline
+        : isPositive
+            ? AppColors.lendColor
+            : AppColors.borrowColor;
+    final sign = isPositive ? '+' : '';
+    final label = isZero
+        ? 'Settled'
+        : isPositive
+            ? 'Others owe you'
+            : 'You owe others';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance, color: color, size: 20),
+                const SizedBox(width: 6),
+                Text('Net Balance', style: theme.textTheme.bodySmall),
+                const Spacer(),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$sign${balance.abs().toStringAsFixed(3)} ${AppConstants.defaultCurrency}',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -517,6 +570,11 @@ class _RecentEntryTile extends StatelessWidget {
     final entryColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
     final sign = isBorrow ? '-' : '+';
 
+    final isCreator = entry.createdBy == userId;
+    final relationLabel = isCreator
+        ? (entry.linkedUserName != null ? 'with ${entry.linkedUserName}' : null)
+        : (entry.createdByName != null ? 'from ${entry.createdByName}' : null);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -532,10 +590,15 @@ class _RecentEntryTile extends StatelessWidget {
           entry.personName,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
-        subtitle: Text(
-          _daysAgo(entry.createdAt),
-          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-        ),
+        subtitle: relationLabel != null
+            ? Text(
+                relationLabel,
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              )
+            : Text(
+                _daysAgo(entry.createdAt),
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              ),
         trailing: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,

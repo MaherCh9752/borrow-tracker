@@ -141,6 +141,9 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
         deadline: _deadline,
         status: _status,
         createdBy: widget.isEditing ? widget.entry!.createdBy : userId,
+        createdByName: widget.isEditing
+            ? widget.entry!.createdByName
+            : context.read<AuthProvider>().user?.displayName,
         participants: [
           userId,
           if (_selectedPersonId != null && _selectedPersonId != userId)

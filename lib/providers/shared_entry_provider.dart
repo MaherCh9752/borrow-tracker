@@ -133,6 +133,56 @@ class SharedEntryProvider extends ChangeNotifier {
       .where((e) => e.entryTypeFor(_currentUserId) == EntryType.lend)
       .fold(0.0, (sum, e) => sum + e.amount);
 
+  /// Net balance: positive means others owe you, negative means you owe others.
+  double get netBalance => totalLent - totalBorrowed;
+
+  /// Calculates the net balance with a specific user.
+  /// Returns positive if they owe you, negative if you owe them.
+  double calculateNetBalance(String otherUserId) {
+    double lent = 0;
+    double borrowed = 0;
+
+    for (final entry in activeEntries) {
+      if (entry.status == EntryStatus.paid) continue;
+
+      final isLinkedToUser = entry.linkedUserId == otherUserId;
+      final isCreatedByUser = entry.createdBy == otherUserId;
+
+      if (!isLinkedToUser && !isCreatedByUser) continue;
+
+      final effectiveType = entry.entryTypeFor(_currentUserId);
+
+      if (effectiveType == EntryType.lend) {
+        lent += entry.amount;
+      } else {
+        borrowed += entry.amount;
+      }
+    }
+
+    return lent - borrowed;
+  }
+
+  /// Returns a map of user IDs to their net balance with the current user.
+  Map<String, double> get netBalancesByUser {
+    final Map<String, double> balances = {};
+
+    for (final entry in activeEntries) {
+      if (entry.status == EntryStatus.paid) continue;
+
+      final otherUserId = entry.linkedUserId ?? entry.createdBy;
+      if (otherUserId == _currentUserId) continue;
+
+      final effectiveType = entry.entryTypeFor(_currentUserId);
+      final delta = effectiveType == EntryType.lend
+          ? entry.amount
+          : -entry.amount;
+
+      balances[otherUserId] = (balances[otherUserId] ?? 0) + delta;
+    }
+
+    return balances;
+  }
+
   List<SharedEntry> get pendingEntries =>
       activeEntries.where((e) => e.status == EntryStatus.pending).toList();
 
