@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/borrow_lend.dart';
-import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../providers/notification_provider.dart';
@@ -17,6 +15,7 @@ import 'pdf_preview_screen.dart';
 import 'security_settings_screen.dart';
 import 'statistics_screen.dart';
 import 'pending_requests_screen.dart';
+import 'grouped_entries_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -65,6 +64,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const PopupMenuItem(
               value: _MenuAction.allRecords,
               child: _MenuTile(icon: Icons.list, title: 'All Records'),
+            ),
+            const PopupMenuItem(
+              value: _MenuAction.groupedByPerson,
+              child: _MenuTile(icon: Icons.group, title: 'Grouped by Person'),
             ),
             PopupMenuItem(
               value: _MenuAction.pendingRequests,
@@ -314,7 +317,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecentSection(ThemeData theme, SharedEntryProvider provider) {
-    final recent = provider.recentEntries;
+    final groups = provider.groupedEntries;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Recent Entries',
+              'By Person',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -336,8 +339,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        if (recent.isEmpty)
+        const SizedBox(height: 8),
+        if (groups.isEmpty)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -353,10 +356,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           )
         else
-          ...recent.map((entry) => _RecentEntryTile(
-                entry: entry,
-                theme: theme,
+          ...groups.map((group) => _DashboardPersonGroup(
+                group: group,
                 userId: provider.currentUserId,
+                theme: theme,
               )),
       ],
     );
@@ -371,6 +374,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _MenuAction.allRecords:
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const AllRecordsScreen()));
+        break;
+      case _MenuAction.groupedByPerson:
+        Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const GroupedEntriesScreen()));
         break;
       case _MenuAction.pendingRequests:
         Navigator.push(context,
@@ -418,6 +425,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 enum _MenuAction {
   allRecords,
+  groupedByPerson,
   pendingRequests,
   statistics,
   exportCsv,
@@ -553,104 +561,105 @@ class _StatsCard extends StatelessWidget {
   }
 }
 
-class _RecentEntryTile extends StatelessWidget {
-  final SharedEntry entry;
-  final ThemeData theme;
+class _DashboardPersonGroup extends StatelessWidget {
+  final PersonGroup group;
   final String userId;
+  final ThemeData theme;
 
-  const _RecentEntryTile({
-    required this.entry,
-    required this.theme,
+  const _DashboardPersonGroup({
+    required this.group,
     required this.userId,
+    required this.theme,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isBorrow = entry.entryTypeFor(userId) == EntryType.borrow;
-    final entryColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
-    final sign = isBorrow ? '-' : '+';
-
-    final isCreator = entry.createdBy == userId;
-    final relationLabel = isCreator
-        ? (entry.linkedUserName != null ? 'with ${entry.linkedUserName}' : null)
-        : (entry.createdByName != null ? 'from ${entry.createdByName}' : null);
+    final balanceColor = group.netBalance > 0
+        ? AppColors.lendColor
+        : group.netBalance < 0
+            ? AppColors.borrowColor
+            : theme.colorScheme.outline;
+    final sign = group.netBalance > 0 ? '+' : '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: entryColor.withValues(alpha: 0.1),
-          child: Icon(
-            isBorrow ? Icons.arrow_downward : Icons.arrow_upward,
-            color: entryColor,
-            size: 20,
-          ),
-        ),
-        title: Text(
-          entry.personName,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
-        subtitle: relationLabel != null
-            ? Text(
-                relationLabel,
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-              )
-            : Text(
-                _daysAgo(entry.createdAt),
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-              ),
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            Text(
-              '$sign${entry.amount.toStringAsFixed(3)} ${entry.currency}',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: entryColor,
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Text(
+                group.personName.isNotEmpty
+                    ? group.personName[0].toUpperCase()
+                    : '?',
+                style: TextStyle(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            const SizedBox(height: 2),
-            _StatusChip(status: entry.status),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.personName,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (group.totalLent > 0) ...[
+                        Text(
+                          'Lent: ${group.totalLent.toStringAsFixed(3)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.lendColor,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (group.totalBorrowed > 0)
+                        Text(
+                          'Borrowed: ${group.totalBorrowed.toStringAsFixed(3)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: AppColors.borrowColor,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$sign${group.netBalance.abs().toStringAsFixed(3)}',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: balanceColor,
+                  ),
+                ),
+                Text(
+                  'Net',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  String _daysAgo(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    return '${diff.inDays} days ago';
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  final EntryStatus status;
-
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final color = AppColors.forStatus(status, brightness);
-
-    final label = switch (status) {
-      EntryStatus.pending => 'Pending',
-      EntryStatus.paid => 'Paid',
-      EntryStatus.partial => 'Partial',
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 11, color: color),
       ),
     );
   }

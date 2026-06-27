@@ -89,10 +89,10 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
 - **Net Balance card**: Shows net debt (positive = others owe you, negative = you owe others, zero = settled)
 - Stats cards: Pending count, Upcoming deadlines (next 7 days)
-- Recent entries list (last 5) with status chip, relative time, and relation label ("from X" / "with X")
+- **Grouped by Person section**: Shows each linked person as a card with avatar, lent/borrowed totals, net balance, and chevron — sorted alphabetically
 - Empty state, pull-to-refresh, FAB for adding entries
 - **Redesigned AppBar**: centered logo icon (`Icons.account_balance_wallet`) + "Borrow Tracker" title, hamburger menu (`PopupMenuButton`) on the left with all navigation items, logout button on the right
-- **Hamburger menu items**: All Records, Pending Requests (with badge), Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
+- **Hamburger menu items**: All Records, Grouped by Person, Pending Requests (with badge), Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
 - **`_MenuTile`** widget: consistent icon + label rows in the popup menu with optional badge
 - Dashboard calculations exclude `PENDING_APPROVAL` and `REJECTED` entries
 
@@ -106,6 +106,16 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Bottom-sheet filter picker with active-chip highlighting
 - Clear-all button, distinct empty states
 - Relation label per entry: "from X" (other user's entry) or "with X" (your entry)
+
+### Grouped by Person
+- **PersonGroup** model: `personId`, `personName`, `entries`, `totalLent`, `totalBorrowed`, `netBalance`
+- **`groupedEntries`** getter on `SharedEntryProvider`: groups filtered entries by the other person
+- **GroupedEntriesScreen**: expandable card list with search, filters, and sorting
+- **Person group header**: avatar with initial, person name, lent/borrowed totals, net balance (color-coded), expand/collapse icon
+- **Expandable entry list**: animated cross-fade showing individual entries with amount, status, date, and deadline
+- **Search**: filters groups by person name (case-insensitive)
+- **Filters**: status, type, currency, deadline — same as All Records
+- **Navigation**: hamburger menu → "Grouped by Person"
 
 ### Notifications
 - **`ReminderSettings`** model persisted in Firestore (`reminderSettings` map inside user doc):
@@ -235,15 +245,16 @@ lib/
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Legacy entry state (per-user sub-collection)
-│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals, netBalance
+│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals, netBalance, groupedEntries
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
 │   └── theme_provider.dart            # ThemeMode persistence, cycle, current label
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
-│   ├── dashboard_screen.dart          # Summary cards, recent entries, nav with badge
+│   ├── dashboard_screen.dart          # Summary cards, grouped by person, nav with badge
 │   ├── all_records_screen.dart        # Full list with actions & filters
+│   ├── grouped_entries_screen.dart    # Entries grouped by person with expandable lists
 │   ├── add_edit_entry_screen.dart     # Entry form with UserSearchField + invite integration
 │   ├── pending_requests_screen.dart   # Debt approval workflow (two sections)
 │   ├── invite_preview_screen.dart     # QR code + invite code + share/copy

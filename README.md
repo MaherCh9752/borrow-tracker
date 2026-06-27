@@ -16,6 +16,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 | Entry Management | Full CRUD with real-time Firestore sync |
 | Dashboard | Summary cards, net balance, stats, recent entries, pending request badge |
 | Net Balance | See who owes you and who you owe at a glance |
+| Grouped by Person | Entries grouped by person with expandable lists and per-person totals |
 | Search & Filters | Text search, status/type/currency/deadline filters |
 | Notifications | In-app + background reminders for deadlines |
 | Statistics | Bar, pie, and line charts (respects entry type per user) |
@@ -128,7 +129,7 @@ When User A creates a "I Borrowed" entry linking to User B:
 - User A sees it as **"I Borrowed"** with subtitle **"with User B"**
 - User B sees it as **"I Lent"** with subtitle **"from User A"**
 
-This applies everywhere — dashboard recent entries, all records, and statistics charts.
+This applies everywhere — dashboard grouped view, all records, and statistics charts.
 
 ---
 
@@ -163,7 +164,7 @@ The first screen after sign-in.
 | Net Balance card | Positive = others owe you, Negative = you owe others, Zero = settled |
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
-| Recent Entries | Last 5 entries with name, amount, currency, status chip, and relation ("from X" / "with X") |
+| By Person | Cards for each linked person with avatar, lent/borrowed totals, net balance |
 | Pending Requests badge | Red badge on menu icon showing total pending count |
 | Pull to refresh | Swipe down to reload from Firestore |
 
@@ -176,6 +177,7 @@ Tap the **+** FAB to add your first entry.
 | Menu Item | Where it goes |
 |-----------|--------------|
 | All Records | Full list with search, filters, and actions |
+| Grouped by Person | Entries grouped by linked person with expandable lists |
 | Pending Requests | Debt approval workflow (with badge count) |
 | Statistics | Three interactive charts |
 | Export to CSV | Preview and save CSV file |
@@ -186,7 +188,34 @@ Tap the **+** FAB to add your first entry.
 
 ---
 
-### 7. Add / Edit Entry
+### 7. Grouped by Person
+
+Open via the hamburger menu → **Grouped by Person**.
+
+| Element | What to look for |
+|---------|-----------------|
+| Person header | Avatar with initial, name, lent/borrowed totals, net balance |
+| Net balance | Positive (teal) = they owe you, Negative (orange) = you owe them |
+| Expand/collapse | Tap a group to show/hide individual entries |
+| Entry details | Amount, currency, status chip, date, deadline |
+
+**Try this:**
+1. Create entries with multiple people
+2. Open Grouped by Person → see each person's section
+3. Expand a person → see all entries with that person
+4. Check totals: Lent + Borrowed + Net should be consistent
+5. Use search → groups filter by person name
+6. Apply filters → groups update in real time
+
+**Test scenarios:**
+- One person with multiple entries → all grouped together
+- Multiple people → sorted alphabetically
+- Mix of lent and borrowed with same person → net balance shown
+- All entries paid → net balance is zero
+
+---
+
+### 8. Add / Edit Entry
 
 Tap the **+** FAB on the dashboard.
 
@@ -209,7 +238,7 @@ Tap the **+** FAB on the dashboard.
 
 ---
 
-### 8. All Records & Filters
+### 9. All Records & Filters
 
 Open via the hamburger menu → **All Records**.
 
@@ -228,7 +257,7 @@ Open via the hamburger menu → **All Records**.
 
 ---
 
-### 9. Statistics
+### 10. Statistics
 
 Open via the hamburger menu → **Statistics**.
 
@@ -247,7 +276,7 @@ All charts respect entry type inversion — each user sees entries from their ow
 
 ---
 
-### 10. Notifications
+### 11. Notifications
 
 Open via the hamburger menu → **Notifications**.
 
@@ -272,7 +301,7 @@ Open via the hamburger menu → **Notifications**.
 
 ---
 
-### 11. Offline Support
+### 12. Offline Support
 
 The app works fully offline. Firestore queues all changes locally and syncs when reconnected.
 
@@ -288,7 +317,7 @@ The app works fully offline. Firestore queues all changes locally and syncs when
 
 ---
 
-### 12. Export to PDF
+### 13. Export to PDF
 
 Open via the hamburger menu → **Export to PDF**.
 
@@ -303,7 +332,7 @@ Open via the hamburger menu → **Export to PDF**.
 
 ---
 
-### 13. Export to CSV
+### 14. Export to CSV
 
 Open via the hamburger menu → **Export to CSV**.
 
@@ -318,7 +347,7 @@ Open via the hamburger menu → **Export to CSV**.
 
 ---
 
-### 14. Dark Mode
+### 15. Dark Mode
 
 Open via the hamburger menu → **Appearance**.
 
@@ -335,7 +364,7 @@ Open via the hamburger menu → **Appearance**.
 
 ---
 
-### 15. Biometric App Lock
+### 16. Biometric App Lock
 
 Open via the hamburger menu → **Security**.
 

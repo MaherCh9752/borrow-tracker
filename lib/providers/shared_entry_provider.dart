@@ -6,6 +6,25 @@ import '../services/shared_entry_service.dart';
 
 enum SharedDeadlineFilter { all, hasDeadline, noDeadline, overdue, upcoming }
 
+/// Represents a group of entries linked to the same person.
+class PersonGroup {
+  final String personId;
+  final String personName;
+  final List<SharedEntry> entries;
+  final double totalLent;
+  final double totalBorrowed;
+  final double netBalance;
+
+  const PersonGroup({
+    required this.personId,
+    required this.personName,
+    required this.entries,
+    required this.totalLent,
+    required this.totalBorrowed,
+    required this.netBalance,
+  });
+}
+
 class SharedEntryProvider extends ChangeNotifier {
   final SharedEntryService _sharedEntryService = SharedEntryService();
   StreamSubscription? _subscription;
@@ -110,6 +129,53 @@ class SharedEntryProvider extends ChangeNotifier {
         break;
     }
 
+    return result;
+  }
+
+  /// Groups filtered entries by the other person, with totals per person.
+  List<PersonGroup> get groupedEntries {
+    final Map<String, List<SharedEntry>> groups = {};
+
+    for (final entry in filteredEntries) {
+      final isCreator = entry.createdBy == _currentUserId;
+      final personId = isCreator
+          ? (entry.linkedUserId ?? entry.createdBy)
+          : entry.createdBy;
+
+      groups.putIfAbsent(personId, () => []).add(entry);
+    }
+
+    final result = <PersonGroup>[];
+    for (final MapEntry<String, List<SharedEntry>> entry in groups.entries) {
+      double lent = 0;
+      double borrowed = 0;
+
+      for (final e in entry.value) {
+        final effectiveType = e.entryTypeFor(_currentUserId);
+        if (effectiveType == EntryType.lend) {
+          lent += e.amount;
+        } else {
+          borrowed += e.amount;
+        }
+      }
+
+      final firstEntry = entry.value.first;
+      final isCreator = firstEntry.createdBy == _currentUserId;
+      final displayName = isCreator
+          ? (firstEntry.linkedUserName ?? firstEntry.personName)
+          : (firstEntry.createdByName ?? firstEntry.personName);
+
+      result.add(PersonGroup(
+        personId: entry.key,
+        personName: displayName,
+        entries: entry.value,
+        totalLent: lent,
+        totalBorrowed: borrowed,
+        netBalance: lent - borrowed,
+      ));
+    }
+
+    result.sort((a, b) => a.personName.compareTo(b.personName));
     return result;
   }
 
