@@ -14,6 +14,7 @@ class PersonGroup {
   final double totalLent;
   final double totalBorrowed;
   final double netBalance;
+  final DateTime? nextDeadline;
 
   const PersonGroup({
     required this.personId,
@@ -22,6 +23,7 @@ class PersonGroup {
     required this.totalLent,
     required this.totalBorrowed,
     required this.netBalance,
+    this.nextDeadline,
   });
 }
 
@@ -96,7 +98,9 @@ class SharedEntryProvider extends ChangeNotifier {
     }
 
     if (_typeFilter != null) {
-      result = result.where((e) => e.type == _typeFilter).toList();
+      result = result
+          .where((e) => e.entryTypeFor(_currentUserId) == _typeFilter)
+          .toList();
     }
 
     if (_currencyFilter != null) {
@@ -129,7 +133,42 @@ class SharedEntryProvider extends ChangeNotifier {
         break;
     }
 
-    return result;
+    return _sortByDeadline(result);
+  }
+
+  /// Returns a priority score for deadline sorting.
+  /// Lower = more urgent.
+  /// 0 = overdue, 1-N = days until deadline, 9999 = no deadline.
+  int _deadlinePriority(SharedEntry entry) {
+    if (entry.deadline == null) return 9999;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final deadlineDay = DateTime(
+      entry.deadline!.year,
+      entry.deadline!.month,
+      entry.deadline!.day,
+    );
+    final daysUntil = deadlineDay.difference(today).inDays;
+    if (daysUntil < 0) return 0; // overdue
+    return daysUntil + 1; // 1 = today, 2 = tomorrow, etc.
+  }
+
+  /// Sorts entries by deadline priority: overdue → nearest → future → no date.
+  /// Paid entries are pushed to the end within each deadline tier.
+  List<SharedEntry> _sortByDeadline(List<SharedEntry> entries) {
+    return List<SharedEntry>.from(entries)..sort((a, b) {
+        final aPriority = _deadlinePriority(a);
+        final bPriority = _deadlinePriority(b);
+        if (aPriority != bPriority) return aPriority.compareTo(bPriority);
+        // Same deadline tier — paid entries go last.
+        if (a.status == EntryStatus.paid && b.status != EntryStatus.paid) {
+          return 1;
+        }
+        if (a.status != EntryStatus.paid && b.status == EntryStatus.paid) {
+          return -1;
+        }
+        return 0;
+      });
   }
 
   /// Groups filtered entries by the other person, with totals per person.
@@ -165,13 +204,23 @@ class SharedEntryProvider extends ChangeNotifier {
           ? (firstEntry.linkedUserName ?? firstEntry.personName)
           : (firstEntry.createdByName ?? firstEntry.personName);
 
+      // Find the nearest upcoming or overdue deadline.
+      DateTime? nextDeadline;
+      for (final e in entry.value) {
+        if (e.deadline == null || e.status == EntryStatus.paid) continue;
+        if (nextDeadline == null || e.deadline!.isBefore(nextDeadline)) {
+          nextDeadline = e.deadline;
+        }
+      }
+
       result.add(PersonGroup(
         personId: entry.key,
         personName: displayName,
-        entries: entry.value,
+        entries: _sortByDeadline(entry.value),
         totalLent: lent,
         totalBorrowed: borrowed,
         netBalance: lent - borrowed,
+        nextDeadline: nextDeadline,
       ));
     }
 

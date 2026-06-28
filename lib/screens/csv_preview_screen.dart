@@ -7,8 +7,9 @@ import '../services/csv_service.dart';
 /// Screen that previews CSV data and allows saving to a chosen location.
 class CsvPreviewScreen extends StatefulWidget {
   final List<BorrowLend> entries;
+  final String? currentUserId;
 
-  const CsvPreviewScreen({super.key, required this.entries});
+  const CsvPreviewScreen({super.key, required this.entries, this.currentUserId});
 
   @override
   State<CsvPreviewScreen> createState() => _CsvPreviewScreenState();
@@ -22,7 +23,7 @@ class _CsvPreviewScreenState extends State<CsvPreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _csvContent = CsvService().generateCsv(widget.entries);
+    _csvContent = CsvService().generateCsv(widget.entries, currentUserId: widget.currentUserId);
     _rows = _parseCsv(_csvContent);
   }
 

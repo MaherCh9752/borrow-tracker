@@ -7,8 +7,9 @@ import '../services/pdf_service.dart';
 /// Screen that previews the generated PDF and allows sharing/printing.
 class PdfPreviewScreen extends StatefulWidget {
   final List<BorrowLend> entries;
+  final String? currentUserId;
 
-  const PdfPreviewScreen({super.key, required this.entries});
+  const PdfPreviewScreen({super.key, required this.entries, this.currentUserId});
 
   @override
   State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
@@ -25,7 +26,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
 
   Future<Uint8List> _generatePdf() async {
     final pdfService = PdfService();
-    final doc = await pdfService.generateEntryReport(widget.entries);
+    final doc = await pdfService.generateEntryReport(widget.entries, currentUserId: widget.currentUserId);
     return doc.save();
   }
 

@@ -1,11 +1,17 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 
 /// Generates PDF documents from borrow/lend entries.
 class PdfService {
   /// Builds a PDF document containing all entries in a clean table format.
-  Future<pw.Document> generateEntryReport(List<BorrowLend> entries) async {
+  /// If [currentUserId] is provided, entry type and person name are resolved
+  /// from the current user's perspective.
+  Future<pw.Document> generateEntryReport(
+    List<BorrowLend> entries, {
+    String? currentUserId,
+  }) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -22,9 +28,9 @@ class PdfService {
               ),
             )
           else
-            _buildTable(entries),
+            _buildTable(entries, currentUserId: currentUserId),
           pw.SizedBox(height: 20),
-          _buildSummary(entries),
+          _buildSummary(entries, currentUserId: currentUserId),
         ],
       ),
     );
@@ -65,16 +71,32 @@ class PdfService {
     );
   }
 
-  pw.Widget _buildTable(List<BorrowLend> entries) {
+  pw.Widget _buildTable(List<BorrowLend> entries, {String? currentUserId}) {
     final headers = ['#', 'Person', 'Type', 'Amount', 'Currency', 'Status', 'Date', 'Deadline', 'Notes'];
 
     final data = entries.asMap().entries.map((entry) {
       final i = entry.key;
       final e = entry.value;
+
+      String personName = e.personName;
+      String typeLabel;
+
+      if (currentUserId != null && e is SharedEntry) {
+        final isCreator = e.createdBy == currentUserId;
+        personName = isCreator
+            ? (e.linkedUserName ?? e.personName)
+            : (e.createdByName ?? e.personName);
+        typeLabel = e.entryTypeFor(currentUserId) == EntryType.borrow
+            ? 'Borrowed'
+            : 'Lent';
+      } else {
+        typeLabel = e.type == EntryType.borrow ? 'Borrowed' : 'Lent';
+      }
+
       return [
         '${i + 1}',
-        e.personName,
-        e.type == EntryType.borrow ? 'Borrowed' : 'Lent',
+        personName,
+        typeLabel,
         e.amount.toStringAsFixed(3),
         e.currency,
         e.status.name[0].toUpperCase() + e.status.name.substring(1),
@@ -125,13 +147,26 @@ class PdfService {
     );
   }
 
-  pw.Widget _buildSummary(List<BorrowLend> entries) {
-    final totalBorrowed = entries
-        .where((e) => e.type == EntryType.borrow)
-        .fold(0.0, (sum, e) => sum + e.amount);
-    final totalLent = entries
-        .where((e) => e.type == EntryType.lend)
-        .fold(0.0, (sum, e) => sum + e.amount);
+  pw.Widget _buildSummary(List<BorrowLend> entries, {String? currentUserId}) {
+    double totalBorrowed = 0;
+    double totalLent = 0;
+
+    for (final e in entries) {
+      if (currentUserId != null && e is SharedEntry) {
+        if (e.entryTypeFor(currentUserId) == EntryType.borrow) {
+          totalBorrowed += e.amount;
+        } else {
+          totalLent += e.amount;
+        }
+      } else {
+        if (e.type == EntryType.borrow) {
+          totalBorrowed += e.amount;
+        } else {
+          totalLent += e.amount;
+        }
+      }
+    }
+
     final pendingCount = entries.where((e) => e.status == EntryStatus.pending).length;
     final paidCount = entries.where((e) => e.status == EntryStatus.paid).length;
 

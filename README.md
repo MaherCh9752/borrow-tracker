@@ -1,39 +1,16 @@
 # Borrow Tracker
 
-A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, local notifications, offline support, shared entries between users, debt linking with approval workflow, and a polished Material 3 UI.
+A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, shared entries between users, debt linking with approval, and a polished Material 3 UI.
 
 ---
 
-## Features at a Glance
-
-| Feature | Description |
-|---------|-------------|
-| Authentication | Email/password sign-up, sign-in, password reset |
-| User Search | Smart searchable field — find users by name or email |
-| Debt Linking | Link debts to specific user accounts with approval workflow |
-| Approval Workflow | Accept or reject debts — entries only count when active |
-| User Invites | QR code + shareable invite code for non-registered users |
-| Entry Management | Full CRUD with real-time Firestore sync |
-| Dashboard | Summary cards, net balance, stats, recent entries, pending request badge |
-| Net Balance | See who owes you and who you owe at a glance |
-| Grouped by Person | Entries grouped by person with expandable lists and per-person totals |
-| Search & Filters | Text search, status/type/currency/deadline filters |
-| Notifications | In-app + background reminders for deadlines |
-| Statistics | Bar, pie, and line charts (respects entry type per user) |
-| Dark Mode | Light / Dark / System theme with persistence |
-| Offline Support | Full offline CRUD with automatic sync |
-| PDF Export | Landscape A4 table with summary |
-| CSV Export | Spreadsheet-ready data with file picker |
-| Biometric Lock | Optional fingerprint/face authentication |
-
----
-
-## Setup
+## Getting Started
 
 ### Prerequisites
+
 - Flutter SDK 3.35+
 - Dart SDK 3.9+
-- A Firebase project with **Authentication** and **Cloud Firestore** enabled
+- A Firebase project with **Authentication** (email/password) and **Cloud Firestore** enabled
 
 ### Installation
 
@@ -43,7 +20,7 @@ cd borrow-tracker
 flutter pub get
 ```
 
-### Firebase Configuration
+### Firebase Setup
 
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable **Authentication** (email/password provider)
@@ -72,14 +49,35 @@ flutter run
 | Sign up | Tap **Sign Up** → enter name, email, password → **Sign Up** |
 | Sign in | Enter email + password → **Sign In** |
 | Password reset | Tap **Forgot Password?** → enter email → check inbox |
-| Form validation | Leave fields empty or enter invalid email → errors appear |
 | Session persistence | Kill and reopen the app → still signed in |
 
 ---
 
-### 2. User Search & Debt Linking
+### 2. Adding Your First Entry
 
-The person name field is now a smart search field that finds registered users.
+Tap the **+** FAB on the dashboard.
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| Person | Yes | Searchable — type to find registered users, or enter any name |
+| Type | Yes | **I Borrowed** or **I Lent** (segmented button) |
+| Amount | Yes | Must be > 0, supports 3 decimal places |
+| Currency | Yes | TND (default), USD, EUR, GBP |
+| Status | Yes | Pending / Paid / Partial (defaults to Pending) |
+| Date | Yes | Defaults to today |
+| Deadline | No | Used by notification reminders |
+| Notes | No | Free text |
+
+**Try this:**
+- Add a borrow entry with a deadline 3 days from now
+- Add a lend entry marked as Paid
+- Edit any field and save — the list updates in real time
+
+---
+
+### 3. User Search & Debt Linking
+
+The person name field is a smart search that finds registered users.
 
 | Action | Steps |
 |--------|-------|
@@ -97,7 +95,7 @@ The person name field is now a smart search field that finds registered users.
 
 ---
 
-### 3. Debt Approval Workflow
+### 4. Debt Approval Workflow
 
 When you link a debt to another user, it starts as **Pending Approval** and must be accepted before it counts in totals.
 
@@ -113,15 +111,9 @@ When you link a debt to another user, it starts as **Pending Approval** and must
 
 1. Sign in as **User B**
 2. Open the hamburger menu → **Pending Requests** (shows badge count)
-3. Under **"Needs your approval"**, find the entry — it shows **"Created by User A"** so you know who created it
+3. Under **"Needs your approval"**, find the entry — it shows **"Created by User A"**
 4. Tap **Accept** → entry becomes `ACTIVE` and appears in dashboard/statistics
 5. Or tap **Reject** → entry is excluded from all calculations
-
-#### Viewing Your Own Pending Entries
-
-1. Open **Pending Requests** from the menu
-2. Under **"Waiting for approval"**, see entries you created that are awaiting the other person's choice
-3. These show the linked user's name and a status indicator (no action buttons)
 
 #### Entry Type Inversion
 
@@ -129,11 +121,11 @@ When User A creates a "I Borrowed" entry linking to User B:
 - User A sees it as **"I Borrowed"** with subtitle **"with User B"**
 - User B sees it as **"I Lent"** with subtitle **"from User A"**
 
-This applies everywhere — dashboard grouped view, all records, and statistics charts.
+This applies everywhere — dashboard, all records, statistics, and CSV/PDF exports.
 
 ---
 
-### 4. User Invitation System
+### 5. User Invitation System
 
 When you search for a user who isn't registered yet:
 
@@ -146,14 +138,11 @@ When you search for a user who isn't registered yet:
    - **Copy Code** button — copies to clipboard
    - **Share Invite** button — opens system share sheet
 
-**Invite details:**
-- Expires in 7 days
-- Stored in Firestore `pending_invites` collection
-- Creator can see their pending invites
+Invites expire in 7 days and are stored in Firestore.
 
 ---
 
-### 5. Dashboard
+### 6. Dashboard
 
 The first screen after sign-in.
 
@@ -164,15 +153,16 @@ The first screen after sign-in.
 | Net Balance card | Positive = others owe you, Negative = you owe others, Zero = settled |
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
-| By Person | Cards for each linked person with avatar, lent/borrowed totals, net balance |
+| By Person | Expandable cards for each linked person with avatar, lent/borrowed totals, net balance, next deadline |
 | Pending Requests badge | Red badge on menu icon showing total pending count |
-| Pull to refresh | Swipe down to reload from Firestore |
 
-Tap the **+** FAB to add your first entry.
+**Expandable person cards:** Tap any person card to expand and see individual entries sorted by deadline priority (overdue first, nearest first). Tap an entry to edit it. Color-coded deadline labels: red = overdue, orange = due within 3 days, gray = future.
 
 ---
 
-### 6. Navigation — Hamburger Menu
+### 7. Navigation — Hamburger Menu
+
+All navigation is through the hamburger menu (≡) in the AppBar.
 
 | Menu Item | Where it goes |
 |-----------|--------------|
@@ -188,13 +178,13 @@ Tap the **+** FAB to add your first entry.
 
 ---
 
-### 7. Grouped by Person
+### 8. Grouped by Person
 
 Open via the hamburger menu → **Grouped by Person**.
 
 | Element | What to look for |
 |---------|-----------------|
-| Person header | Avatar with initial, name, lent/borrowed totals, net balance |
+| Person header | Avatar with initial, name, lent/borrowed totals, net balance, next deadline |
 | Net balance | Positive (teal) = they owe you, Negative (orange) = you owe them |
 | Expand/collapse | Tap a group to show/hide individual entries |
 | Entry details | Amount, currency, status chip, date, deadline |
@@ -203,38 +193,8 @@ Open via the hamburger menu → **Grouped by Person**.
 1. Create entries with multiple people
 2. Open Grouped by Person → see each person's section
 3. Expand a person → see all entries with that person
-4. Check totals: Lent + Borrowed + Net should be consistent
-5. Use search → groups filter by person name
-6. Apply filters → groups update in real time
-
-**Test scenarios:**
-- One person with multiple entries → all grouped together
-- Multiple people → sorted alphabetically
-- Mix of lent and borrowed with same person → net balance shown
-- All entries paid → net balance is zero
-
----
-
-### 8. Add / Edit Entry
-
-Tap the **+** FAB on the dashboard.
-
-| Field | Required | Notes |
-|-------|----------|-------|
-| Person | Yes | Searchable field — type to find users, or enter any name |
-| Type | Yes | **I Borrowed** or **I Lent** (segmented button) |
-| Amount | Yes | Must be > 0, supports 3 decimal places |
-| Currency | Yes | TND (default), USD, EUR, GBP |
-| Status | Yes | Pending / Paid / Partial (defaults to Pending) |
-| Date | Yes | Defaults to today |
-| Deadline | No | Used by notification reminders |
-| Notes | No | Free text |
-
-**Try this:**
-- Add a borrow entry with a deadline 3 days from now
-- Add a lend entry marked as Paid
-- Add a linked entry to another user → check Pending Requests
-- Edit any field and save — the list updates in real time
+4. Use search → groups filter by person name
+5. Apply filters → groups update in real time
 
 ---
 
@@ -246,7 +206,7 @@ Open via the hamburger menu → **All Records**.
 |--------|-----|
 | Search by name | Type in the search bar — filters as you type |
 | Filter by status | Tap Status chip → select Pending / Paid / Partial |
-| Filter by type | Tap Type chip → Borrowed / Lent |
+| Filter by type | Tap Type chip → Borrowed / Lent (respects your perspective) |
 | Filter by currency | Tap Currency chip → pick from used currencies |
 | Filter by deadline | Tap Deadline chip → Has deadline / No deadline / Overdue / Next 7 days |
 | Combine filters | Apply multiple at once — active chips are highlighted |
@@ -254,6 +214,13 @@ Open via the hamburger menu → **All Records**.
 | Edit entry | Tap **⋮** → Edit |
 | Change status | Tap **⋮** → Mark Paid / Mark Pending / Mark Partial |
 | Delete entry | Tap **⋮** → Delete → confirm (only if you're the creator) |
+
+**Due date sorting:** Entries are automatically sorted by deadline priority:
+1. **Overdue** debts appear first (past deadline, unpaid)
+2. **Nearest deadline** — entries due soonest come next
+3. **Future deadline** — entries further out
+4. **No deadline** — entries without a deadline appear last
+5. **Paid entries** are pushed to the end within each tier
 
 ---
 
@@ -268,11 +235,6 @@ Open via the hamburger menu → **Statistics**.
 | Debt History | Curved line chart — net cumulative debt over time |
 
 All charts respect entry type inversion — each user sees entries from their own perspective.
-
-**Edge cases:**
-- Empty state → "Add some entries to see statistics."
-- Single entry → pie shows 100% one color, line is flat
-- All entries paid → pie is 100% green
 
 ---
 
@@ -313,8 +275,6 @@ The app works fully offline. Firestore queues all changes locally and syncs when
 | Sync on reconnect | Turn off airplane mode → all changes appear in Firestore |
 | Cached reads | Airplane mode on → navigate the app → entries still load |
 
-> All save operations use a 500ms timeout — writes are queued locally even when offline.
-
 ---
 
 ### 13. Export to PDF
@@ -328,7 +288,7 @@ Open via the hamburger menu → **Export to PDF**.
 | Print | Tap print icon → send to a printer |
 | Filtered export | From All Records, apply filters first → then export |
 
-**PDF includes:** header, table (Person, Type, Amount, Currency, Status, Date, Deadline, Notes), alternating row colors, summary section with TND totals, page numbers.
+**PDF includes:** header, table (Person, Type, Amount, Currency, Status, Date, Deadline, Notes), alternating row colors, summary section with TND totals, page numbers. Type and person name are resolved from your perspective.
 
 ---
 
@@ -343,7 +303,7 @@ Open via the hamburger menu → **Export to CSV**.
 | Save again | Stay on preview → save to a different location |
 | Filtered export | From All Records, apply filters first → then export |
 
-**CSV includes:** headers, ISO dates (YYYY-MM-DD), proper quoting for commas, 3 decimal places for amounts.
+**CSV includes:** headers, ISO dates (YYYY-MM-DD), proper quoting for commas, 3 decimal places for amounts. Type and person name are resolved from your perspective.
 
 ---
 
@@ -357,10 +317,7 @@ Open via the hamburger menu → **Appearance**.
 | Light | Always uses the light theme |
 | Dark | Always uses the dark theme |
 
-**Try this:**
-- Toggle between modes → all screens update instantly
-- Check charts, dialogs, snackbars, and status chips in both themes
-- Kill and reopen → theme preference persists
+Toggle between modes → all screens update instantly. Theme preference persists across app restarts.
 
 ---
 
@@ -390,7 +347,7 @@ lib/
 ├── theme/                             # AppTheme, AppColors, light/dark ThemeData
 ├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric, Invite
 ├── providers/                         # Auth, Entry, SharedEntry, Notification, Connectivity, Security, Theme
-├── screens/                           # All UI screens (including PendingRequests, InvitePreview)
+├── screens/                           # All UI screens
 ├── widgets/                           # Reusable widgets (OfflineIndicator, UserPicker, UserSearchField)
 └── utils/                             # Constants
 ```

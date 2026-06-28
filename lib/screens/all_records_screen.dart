@@ -53,7 +53,10 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
                 : () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CsvPreviewScreen(entries: filtered),
+                        builder: (_) => CsvPreviewScreen(
+                          entries: filtered,
+                          currentUserId: authProvider.user!.uid,
+                        ),
                       ),
                     ),
           ),
@@ -65,7 +68,10 @@ class _AllRecordsScreenState extends State<AllRecordsScreen> {
                 : () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => PdfPreviewScreen(entries: filtered),
+                        builder: (_) => PdfPreviewScreen(
+                          entries: filtered,
+                          currentUserId: authProvider.user!.uid,
+                        ),
                       ),
                     ),
           ),

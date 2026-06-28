@@ -39,7 +39,8 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Dashboard Net Balance card**: shows amount with color-coded label ("Others owe you" / "You owe others" / "Settled")
 
 ### Shared Entry Management (CRUD)
-- `SharedEntry` model extending `BorrowLend` with `createdBy`, `createdByName`, `participants`, `linkedUserId`, `linkedUserName`, and `approvalStatus` fields
+- `SharedEntry` model extending `BorrowLend` with `createdBy`, `createdByName`, `participants`, `linkedUserId`, `linkedUserName`, `approvalStatus`, and `deadline` fields
+- **`createdByName`**: stores creator's display name — used for "Created by X" in pending requests and entry labels
 - Firestore collection: `shared_entries/{entryId}` — single source of truth, no duplication per user
 - Participants array of user IDs — entry appears for all participants via `ARRAY-CONTAINS` query
 - Default personal entries: entries without selected participants default to `participants: [currentUserId]`
@@ -89,7 +90,10 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
 - **Net Balance card**: Shows net debt (positive = others owe you, negative = you owe others, zero = settled)
 - Stats cards: Pending count, Upcoming deadlines (next 7 days)
-- **Grouped by Person section**: Shows each linked person as a card with avatar, lent/borrowed totals, net balance, and chevron — sorted alphabetically
+- **Grouped by Person section**: Shows each linked person as a card with avatar, lent/borrowed totals, net balance, next deadline, and expand/collapse — sorted alphabetically
+- **Expandable person cards** (StatefulWidget): tap to expand and see individual entries sorted by deadline priority
+- **Entry details in expanded view**: colored bar (borrow/lend), amount with sign, status chip, date, deadline (color-coded: red overdue, orange ≤3d, gray otherwise)
+- Tap an entry → opens edit screen
 - Empty state, pull-to-refresh, FAB for adding entries
 - **Redesigned AppBar**: centered logo icon (`Icons.account_balance_wallet`) + "Borrow Tracker" title, hamburger menu (`PopupMenuButton`) on the left with all navigation items, logout button on the right
 - **Hamburger menu items**: All Records, Grouped by Person, Pending Requests (with badge), Statistics | Export to CSV, Export to PDF | Notifications, Appearance, Security — grouped with dividers
@@ -100,18 +104,19 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Scrollable list with popup menu (edit / mark paid / mark partial / delete)
 - Text search by person name (case-insensitive)
 - Status filter (Pending / Paid / Partial)
-- Type filter (Borrowed / Lent) — respects entry type inversion per user
+- Type filter (Borrowed / Lent) — uses `entryTypeFor()` to resolve type per user before filtering
 - Currency filter (dynamically populated)
 - Deadline filter (Has deadline / No deadline / Overdue / Next 7 days)
 - Bottom-sheet filter picker with active-chip highlighting
 - Clear-all button, distinct empty states
 - Relation label per entry: "from X" (other user's entry) or "with X" (your entry)
+- **Due date priority sorting**: overdue first → nearest deadline → future deadline → no deadline; paid entries pushed to end within each tier
 
 ### Grouped by Person
-- **PersonGroup** model: `personId`, `personName`, `entries`, `totalLent`, `totalBorrowed`, `netBalance`
+- **PersonGroup** model: `personId`, `personName`, `entries`, `totalLent`, `totalBorrowed`, `netBalance`, `nextDeadline`
 - **`groupedEntries`** getter on `SharedEntryProvider`: groups filtered entries by the other person
 - **GroupedEntriesScreen**: expandable card list with search, filters, and sorting
-- **Person group header**: avatar with initial, person name, lent/borrowed totals, net balance (color-coded), expand/collapse icon
+- **Person group header**: avatar with initial, person name, lent/borrowed totals, net balance (color-coded), next deadline (color-coded), expand/collapse icon
 - **Expandable entry list**: animated cross-fade showing individual entries with amount, status, date, and deadline
 - **Search**: filters groups by person name (case-insensitive)
 - **Filters**: status, type, currency, deadline — same as All Records
@@ -175,6 +180,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **`PdfService`** generates landscape A4 PDF with `pdf` package
 - **Table columns**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
 - **Summary section**: Total entries, total borrowed/lent, pending/paid counts
+- **Perspective-aware export**: accepts `currentUserId` — type and person name resolved via `entryTypeFor()` so the PDF matches the user's view
 - **`PdfPreviewScreen`** shows live preview + share/print via `printing` package
 - Export via **Dashboard hamburger menu** (exports all entries) and **All Records AppBar** (exports filtered entries)
 - Empty state handling when no entries exist
@@ -183,6 +189,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **`CsvService`** generates CSV with `csv` package (proper quoting for edge cases)
 - **Headers**: #, Person, Type, Amount, Currency, Status, Date, Deadline, Notes
 - **ISO date format**: `YYYY-MM-DD` for spreadsheet compatibility
+- **Perspective-aware export**: accepts `currentUserId` — type and person name resolved via `entryTypeFor()` so the CSV matches the user's view
 - **`CsvPreviewScreen`** shows DataTable preview + save to chosen location via `file_picker`
 - Export via **Dashboard hamburger menu** (exports all entries) and **All Records AppBar** (exports filtered entries)
 - User stays on preview screen after saving — can save multiple times to different locations

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/borrow_lend.dart';
+import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../providers/notification_provider.dart';
@@ -392,7 +394,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CsvPreviewScreen(entries: sharedEntryProvider.entries),
+              builder: (_) => CsvPreviewScreen(
+                entries: sharedEntryProvider.entries,
+                currentUserId: sharedEntryProvider.currentUserId,
+              ),
             ),
           );
         }
@@ -402,7 +407,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => PdfPreviewScreen(entries: sharedEntryProvider.entries),
+              builder: (_) => PdfPreviewScreen(
+                entries: sharedEntryProvider.entries,
+                currentUserId: sharedEntryProvider.currentUserId,
+              ),
             ),
           );
         }
@@ -561,7 +569,7 @@ class _StatsCard extends StatelessWidget {
   }
 }
 
-class _DashboardPersonGroup extends StatelessWidget {
+class _DashboardPersonGroup extends StatefulWidget {
   final PersonGroup group;
   final String userId;
   final ThemeData theme;
@@ -573,7 +581,17 @@ class _DashboardPersonGroup extends StatelessWidget {
   });
 
   @override
+  State<_DashboardPersonGroup> createState() => _DashboardPersonGroupState();
+}
+
+class _DashboardPersonGroupState extends State<_DashboardPersonGroup> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final group = widget.group;
+    final theme = widget.theme;
+    final userId = widget.userId;
     final balanceColor = group.netBalance > 0
         ? AppColors.lendColor
         : group.netBalance < 0
@@ -583,84 +601,261 @@ class _DashboardPersonGroup extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: Text(
-                group.personName.isNotEmpty
-                    ? group.personName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
-                  Text(
-                    group.personName,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  CircleAvatar(
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Text(
+                      group.personName.isNotEmpty
+                          ? group.personName[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (group.totalLent > 0) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          'Lent: ${group.totalLent.toStringAsFixed(3)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.lendColor,
+                          group.personName,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (group.totalLent > 0) ...[
+                              Text(
+                                'Lent: ${group.totalLent.toStringAsFixed(3)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.lendColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            if (group.totalBorrowed > 0)
+                              Text(
+                                'Borrowed: ${group.totalBorrowed.toStringAsFixed(3)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.borrowColor,
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (group.nextDeadline != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.event,
+                                size: 12,
+                                color: _deadlineColor(group.nextDeadline!, theme),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _deadlineLabel(group.nextDeadline!),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: _deadlineColor(group.nextDeadline!, theme),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
-                      if (group.totalBorrowed > 0)
-                        Text(
-                          'Borrowed: ${group.totalBorrowed.toStringAsFixed(3)}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: AppColors.borrowColor,
-                          ),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '$sign${group.netBalance.abs().toStringAsFixed(3)}',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: balanceColor,
                         ),
+                      ),
+                      Text(
+                        'Net',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
                   ),
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: _DashboardEntryList(
+              entries: group.entries,
+              userId: userId,
+              theme: theme,
+            ),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _deadlineColor(DateTime deadline, ThemeData theme) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final deadlineDay = DateTime(deadline.year, deadline.month, deadline.day);
+    final daysUntil = deadlineDay.difference(today).inDays;
+    if (daysUntil < 0) return AppColors.overdue(theme.brightness);
+    if (daysUntil <= 3) return AppColors.borrowColor;
+    return theme.colorScheme.onSurfaceVariant;
+  }
+
+  String _deadlineLabel(DateTime deadline) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final deadlineDay = DateTime(deadline.year, deadline.month, deadline.day);
+    final daysUntil = deadlineDay.difference(today).inDays;
+    if (daysUntil < 0) return '${-daysUntil}d overdue';
+    if (daysUntil == 0) return 'Due today';
+    if (daysUntil == 1) return 'Due tomorrow';
+    return 'Due in ${daysUntil}d';
+  }
+}
+
+/// Entry list shown inside an expanded person group on the dashboard.
+class _DashboardEntryList extends StatelessWidget {
+  final List<SharedEntry> entries;
+  final String userId;
+  final ThemeData theme;
+
+  const _DashboardEntryList({
+    required this.entries,
+    required this.userId,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: entries.map((entry) {
+        final isBorrow = entry.entryTypeFor(userId) == EntryType.borrow;
+        final entryColor = isBorrow ? AppColors.borrowColor : AppColors.lendColor;
+        final sign = isBorrow ? '-' : '+';
+        final brightness = Theme.of(context).brightness;
+        final statusColor = AppColors.forStatus(entry.status, brightness);
+        final statusLabel = switch (entry.status) {
+          EntryStatus.pending => 'Pending',
+          EntryStatus.paid => 'Paid',
+          EntryStatus.partial => 'Partial',
+        };
+
+        return InkWell(
+          onTap: () async {
+            await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AddEditEntryScreen(entry: entry),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
               children: [
-                Text(
-                  '$sign${group.netBalance.abs().toStringAsFixed(3)}',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: balanceColor,
+                Container(
+                  width: 3,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: entryColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                Text(
-                  'Net',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _daysAgo(entry.createdAt),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (entry.deadline != null) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(Icons.event, size: 12, color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Due ${entry.deadline!.day}/${entry.deadline!.month}/${entry.deadline!.year}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$sign${entry.amount.toStringAsFixed(3)} ${entry.currency}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: entryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: TextStyle(fontSize: 11, color: statusColor),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right,
-              color: theme.colorScheme.onSurfaceVariant,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      }).toList(),
     );
+  }
+
+  String _daysAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    return '${diff.inDays} days ago';
   }
 }
