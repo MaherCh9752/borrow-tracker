@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/change_request_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../providers/notification_provider.dart';
 import '../theme/app_theme.dart';
@@ -37,6 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final notificationProvider = context.read<NotificationProvider>();
 
       sharedEntryProvider.listenToEntries(userId);
+      context.read<ChangeRequestProvider>().listenToChangeRequests(userId);
 
       sharedEntryProvider.onEntriesRefreshed = () {
         if (mounted) {
@@ -55,7 +57,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final sharedEntryProvider = context.watch<SharedEntryProvider>();
     final theme = Theme.of(context);
     final pendingCount = sharedEntryProvider.pendingFromMe.length +
-        sharedEntryProvider.pendingApprovals.length;
+        sharedEntryProvider.pendingApprovals.length +
+        context.read<ChangeRequestProvider>().incomingRequests.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -152,6 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onRefresh: () async {
                 final userId = authProvider.user!.uid;
                 context.read<SharedEntryProvider>().listenToEntries(userId);
+                context.read<ChangeRequestProvider>().listenToChangeRequests(userId);
               },
               child: _buildBody(theme, sharedEntryProvider, authProvider),
             ),

@@ -1,6 +1,6 @@
 # Borrow Tracker
 
-A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, shared entries between users, debt linking with approval, and a polished Material 3 UI.
+A production-ready Flutter mobile app for tracking borrowed and lent money — with real-time sync, shared entries between users, debt linking with approval, edit proposals with change requests, and a polished Material 3 UI.
 
 ---
 
@@ -125,7 +125,39 @@ This applies everywhere — dashboard, all records, statistics, and CSV/PDF expo
 
 ---
 
-### 5. User Invitation System
+### 5. Editing Linked Entries (Change Requests)
+
+When you edit a shared entry that links to another user, the change goes through an approval workflow instead of applying immediately.
+
+#### Proposing an Edit
+
+1. Open an entry for editing (tap an entry → edit)
+2. Make your changes (amount, type, status, deadline, notes, etc.)
+3. Tap **Submit for Approval**
+4. A change request is created — the entry remains unchanged for the other user
+
+#### Reviewing Edit Proposals
+
+1. Sign in as the other user
+2. Open hamburger menu → **Pending Requests**
+3. Under **"Change requests"**, you'll see the proposed edit with a diff display showing exactly what changed
+4. Tap **Accept** → changes are applied to the entry
+5. Tap **Reject** → proposed changes are discarded
+
+#### Cancelling an Edit
+
+1. Open hamburger menu → **Pending Requests**
+2. Under **"Your change requests"**, find the pending edit
+3. Tap **Cancel Request** → the change request is removed
+
+**Key behaviors:**
+- The original entry remains unchanged while the edit is pending
+- Only the specific fields in the proposed change are updated (participants array is always preserved)
+- Both users see real-time updates via Firestore streams
+
+---
+
+### 6. User Invitation System
 
 When you search for a user who isn't registered yet:
 
@@ -142,7 +174,7 @@ Invites expire in 7 days and are stored in Firestore.
 
 ---
 
-### 6. Dashboard
+### 7. Dashboard
 
 The first screen after sign-in.
 
@@ -160,7 +192,7 @@ The first screen after sign-in.
 
 ---
 
-### 7. Navigation — Hamburger Menu
+### 8. Navigation — Hamburger Menu
 
 All navigation is through the hamburger menu (≡) in the AppBar.
 
@@ -178,7 +210,7 @@ All navigation is through the hamburger menu (≡) in the AppBar.
 
 ---
 
-### 8. Grouped by Person
+### 9. Grouped by Person
 
 Open via the hamburger menu → **Grouped by Person**.
 
@@ -198,7 +230,7 @@ Open via the hamburger menu → **Grouped by Person**.
 
 ---
 
-### 9. All Records & Filters
+### 10. All Records & Filters
 
 Open via the hamburger menu → **All Records**.
 
@@ -224,7 +256,7 @@ Open via the hamburger menu → **All Records**.
 
 ---
 
-### 10. Statistics
+### 11. Statistics
 
 Open via the hamburger menu → **Statistics**.
 
@@ -238,7 +270,7 @@ All charts respect entry type inversion — each user sees entries from their ow
 
 ---
 
-### 11. Notifications
+### 12. Notifications
 
 Open via the hamburger menu → **Notifications**.
 
@@ -263,7 +295,7 @@ Open via the hamburger menu → **Notifications**.
 
 ---
 
-### 12. Offline Support
+### 13. Offline Support
 
 The app works fully offline. Firestore queues all changes locally and syncs when reconnected.
 
@@ -277,7 +309,7 @@ The app works fully offline. Firestore queues all changes locally and syncs when
 
 ---
 
-### 13. Export to PDF
+### 14. Export to PDF
 
 Open via the hamburger menu → **Export to PDF**.
 
@@ -292,7 +324,7 @@ Open via the hamburger menu → **Export to PDF**.
 
 ---
 
-### 14. Export to CSV
+### 15. Export to CSV
 
 Open via the hamburger menu → **Export to CSV**.
 
@@ -307,7 +339,7 @@ Open via the hamburger menu → **Export to CSV**.
 
 ---
 
-### 15. Dark Mode
+### 16. Dark Mode
 
 Open via the hamburger menu → **Appearance**.
 
@@ -321,7 +353,7 @@ Toggle between modes → all screens update instantly. Theme preference persists
 
 ---
 
-### 16. Biometric App Lock
+### 17. Biometric App Lock
 
 Open via the hamburger menu → **Security**.
 
@@ -343,10 +375,10 @@ Open via the hamburger menu → **Security**.
 lib/
 ├── main.dart                          # Entry point, providers, WorkManager init
 ├── firebase_options.dart              # Firebase config (generated)
-├── models/                            # Data models (BorrowLend, SharedEntry, User, ReminderSettings, PendingInvite)
+├── models/                            # Data models (BorrowLend, SharedEntry, User, ReminderSettings, PendingInvite, ChangeRequest)
 ├── theme/                             # AppTheme, AppColors, light/dark ThemeData
-├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric, Invite
-├── providers/                         # Auth, Entry, SharedEntry, Notification, Connectivity, Security, Theme
+├── services/                          # Firebase Auth, Firestore CRUD, Notifications, PDF, CSV, Biometric, Invite, ChangeRequest
+├── providers/                         # Auth, Entry, SharedEntry, Notification, Connectivity, Security, Theme, ChangeRequest
 ├── screens/                           # All UI screens
 ├── widgets/                           # Reusable widgets (OfflineIndicator, UserPicker, UserSearchField)
 └── utils/                             # Constants
@@ -377,7 +409,7 @@ lib/
 
 ## Project Status
 
-All planned features are implemented and verified. See [PROJECT-STATE.md](PROJECT-STATE.md) for the detailed feature list and architecture.
+All planned features are implemented and verified. See [PROJECT-STATE.md](PROJECT-STATE.md) for the detailed feature list, architecture, and changelog.
 
 ---
 

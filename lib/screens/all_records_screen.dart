@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/change_request.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/change_request_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/offline_indicator.dart';
@@ -447,6 +449,14 @@ class _EntryCard extends StatelessWidget {
                   const SizedBox(width: 12),
                 ],
                 _StatusChip(status: entry.status),
+                if (_hasPendingChangeRequest(entry.id, context)) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.edit_note,
+                    size: 16,
+                    color: theme.colorScheme.tertiary,
+                  ),
+                ],
               ],
             ),
           ],
@@ -485,17 +495,12 @@ class _EntryCard extends StatelessWidget {
           ),
         );
       case _Action.markPaid:
-        await sharedEntryProvider.editEntry(
-          entry: entry.copyWith(
-            status: entry.status == EntryStatus.paid
-                ? EntryStatus.pending
-                : EntryStatus.paid,
-          ),
-        );
+        final newStatus = entry.status == EntryStatus.paid
+            ? EntryStatus.pending
+            : EntryStatus.paid;
+        await _createStatusChangeRequest(context, entry, newStatus);
       case _Action.markPartial:
-        await sharedEntryProvider.editEntry(
-          entry: entry.copyWith(status: EntryStatus.partial),
-        );
+        await _createStatusChangeRequest(context, entry, EntryStatus.partial);
       case _Action.delete:
         final confirmed = await showDialog<bool>(
           context: context,
@@ -517,12 +522,55 @@ class _EntryCard extends StatelessWidget {
         );
         if (confirmed == true) {
           await sharedEntryProvider.deleteEntry(entryId: entry.id);
+          if (context.mounted) {
+            await context.read<ChangeRequestProvider>().deleteRequestsForEntry(
+                  entryId: entry.id,
+                );
+          }
         }
     }
   }
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  bool _hasPendingChangeRequest(String entryId, BuildContext context) {
+    final changeProvider = context.read<ChangeRequestProvider>();
+    return changeProvider.requests.any(
+      (r) => r.entryId == entryId && r.status == ChangeRequestStatus.pending,
+    );
+  }
+
+  Future<void> _createStatusChangeRequest(
+    BuildContext context,
+    SharedEntry entry,
+    EntryStatus newStatus,
+  ) async {
+    final changeProvider = context.read<ChangeRequestProvider>();
+    final proposedChanges = <String, dynamic>{
+      'status': newStatus.name,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    final success = await changeProvider.createChangeRequest(
+      currentEntry: entry,
+      proposedChanges: proposedChanges,
+      requestedByName: context.read<AuthProvider>().user?.displayName ?? '',
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Change request sent for approval'
+                : 'Failed to send change request',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 

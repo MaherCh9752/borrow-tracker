@@ -57,7 +57,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - Locks after a user is selected — read-only with primary tint and filled background
 - Clear button (X) resets the selection and allows re-searching
 - Shows invite options (QR Code / Share Link) when no users are found
-- Returns `selectedUserId` to parent via `onSelected` callback
+- Returns `selectedUserId` to parent via `onSelected` callback (nullable)
 
 ### Debt Linking
 - `linkedUserId` and `linkedUserName` fields on `SharedEntry` — links a debt to a specific user account
@@ -67,12 +67,23 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Entry type inversion**: When User A creates a "borrow" entry linking to User B, it appears as a "lend" entry for User B (and vice versa) via `entryTypeFor(userId)`
 
 ### Debt Approval Workflow
-- **PendingRequestsScreen** with two sections:
+- **PendingRequestsScreen** with four sections:
   - **Waiting for approval**: Entries you created that are pending the linked user's approval — shows linked user name
   - **Needs your approval**: Entries others created linking to you — shows creator's name (`createdByName`) with accept/reject buttons
-- **Accept**: Sets `approvalStatus = ACTIVE` — entry now counts in dashboard/statistics
-- **Reject**: Sets `approvalStatus = REJECTED` — entry excluded from all calculations
+  - **Change requests**: Incoming edit proposals from other users with diff display and accept/reject
+  - **Your change requests**: Outgoing edit proposals awaiting the other user's approval with cancel option
+- **Accept**: Sets `approvalStatus = ACTIVE` via partial update (`editEntryFromMap`) — entry now counts in dashboard/statistics
+- **Reject**: Sets `approvalStatus = REJECTED` via partial update — entry excluded from all calculations
 - Badge count on dashboard hamburger menu showing total pending requests
+
+### Change Request System (Edit Workflow)
+- Editing a shared entry creates a **change request** instead of direct modification
+- Change request stores proposed changes as a map — entry remains unchanged until accepted
+- **Accept**: Applies proposed changes to the entry via `editEntryFromMap()` (preserves `participants`)
+- **Reject**: Discards proposed changes — entry unchanged
+- **Cancel**: Creator can cancel their own pending change request
+- Change request participants derived from the original entry's `linkedUserId`
+- Diff display shows exactly what changed (amount, type, currency, status, deadline, notes, person)
 
 ### User Invitation System
 - When no users are found in search, shows **Invite by QR Code** and **Share Link** buttons
@@ -173,7 +184,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **`OfflineIndicator`** widget: orange banner shown at the top of Dashboard and All Records screens when offline
 - Firestore automatically queues writes offline and syncs when reconnected
 - Data reads served from local cache when offline
-- **Offline-safe CRUD**: All save buttons (Add Entry, Edit Entry, Save Settings) use 500ms timeout + `try-catch-finally` — always navigate back even when offline (Firestore queues writes locally)
+- **Offline-safe CRUD**: All save buttons (Add Entry, Edit Entry, Save Settings) use `try-catch-finally` — always navigate back or show error even when offline (Firestore queues writes locally)
 - **Fallback caching**: Notification settings fall back to `SharedPreferences` if Firestore write fails
 
 ### Export to PDF
@@ -233,7 +244,8 @@ lib/
 │   ├── borrow_lend.dart               # Borrow/lend entry model + enums (EntryType, EntryStatus, ApprovalStatus)
 │   ├── shared_entry_model.dart        # SharedEntry model with linked user fields + entryTypeFor()
 │   ├── reminder_settings.dart         # Notification settings model
-│   └── pending_invite_model.dart      # PendingInvite model for user invitations
+│   ├── pending_invite_model.dart      # PendingInvite model for user invitations
+│   └── change_request.dart            # ChangeRequest model for edit proposals
 ├── theme/
 │   ├── app_theme.dart                 # AppTheme accessor + AppColors semantic tokens
 │   ├── light_theme.dart               # ThemeData for light mode
@@ -248,22 +260,24 @@ lib/
 │   ├── pdf_service.dart               # PDF generation with table + summary
 │   ├── csv_service.dart               # CSV generation with headers
 │   ├── biometric_service.dart         # Biometric authentication via local_auth
-│   └── invite_service.dart            # Pending invite CRUD + token/code generation
+│   ├── invite_service.dart            # Pending invite CRUD + token/code generation
+│   └── change_request_service.dart    # Change request Firestore CRUD + real-time stream
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
 │   ├── entry_provider.dart            # Legacy entry state (per-user sub-collection)
-│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, activeEntries, pendingApprovals, netBalance, groupedEntries
+│   ├── shared_entry_provider.dart     # Shared entry state, filters, aggregates, editEntryFromMap
 │   ├── notification_provider.dart     # Settings persistence, schedule logic, timer, _fireDue
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
-│   └── theme_provider.dart            # ThemeMode persistence, cycle, current label
+│   ├── theme_provider.dart            # ThemeMode persistence, cycle, current label
+│   └── change_request_provider.dart   # Change request state, create/accept/reject/cancel
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, grouped by person, nav with badge
 │   ├── all_records_screen.dart        # Full list with actions & filters
 │   ├── grouped_entries_screen.dart    # Entries grouped by person with expandable lists
 │   ├── add_edit_entry_screen.dart     # Entry form with UserSearchField + invite integration
-│   ├── pending_requests_screen.dart   # Debt approval workflow (two sections)
+│   ├── pending_requests_screen.dart   # Debt approval + change request workflow (four sections)
 │   ├── invite_preview_screen.dart     # QR code + invite code + share/copy
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
@@ -287,10 +301,28 @@ lib/
 - `USE_EXACT_ALARM` + `SCHEDULE_EXACT_ALARM` + `POST_NOTIFICATIONS` + `RECEIVE_BOOT_COMPLETED` declared in `AndroidManifest.xml`
 - `shared_preferences` for first-run tracking, theme mode persistence
 - Firestore composite index on `shared_entries` (`participants` ASC + `createdAt` DESC)
+- Firestore composite index on `change_requests` (`participants` ASC + `status` ASC + `createdAt` DESC)
 - Firestore security rules for `shared_entries` (participants read, creator delete, participant update)
 - Firestore security rules for `pending_invites` (authenticated read, creator CRUD)
+- Firestore security rules for `change_requests` (participants read/write)
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
 - Deep links for invite acceptance (invite preview screen only — no deep link handler yet)
 - Background invite checking (invites expire silently — no notification to creator)
+
+## Bug Fixes (June 2026)
+
+### Entry disappearing for other user after edit — 6 root causes fixed
+
+1. **`_ApprovalCard._accept()`/`_reject()` full-document overwrite** (`pending_requests_screen.dart`): Changed to `editEntryFromMap()` which only writes `approvalStatus` and `updatedAt`, preserving the `participants` array that controls Firestore query visibility.
+
+2. **`UserSearchField._clearSelection()` poison value** (`user_search_field.dart`): Changed `onSelected('')` to `onSelected(null)`. The empty string bypassed the null-aware `??` operator in the edit screen, corrupting `linkedUserId` in proposed changes.
+
+3. **`_save()` rebuilds participants from scratch** (`add_edit_entry_screen.dart`): When editing, now preserves `widget.entry!.participants` instead of rebuilding from only the current user and search field selection.
+
+4. **Provider error masking** (`shared_entry_provider.dart`): `addEntry()`, `editEntry()`, `deleteEntry()` now return `false` on error instead of `true`. Removed 500ms timeout that caused silent `TimeoutException` on slow connections.
+
+5. **`_save()` catch block pops with success** (`add_edit_entry_screen.dart`): Error catch now shows an error snackbar instead of `Navigator.pop(context, true)` which masked failures.
+
+6. **`SharedEntryProvider.editEntryFromMap()`** added to provider — partial-update method that delegates to `SharedEntryService.editEntryFromMap()`, used by approval accept/reject and change-request acceptance.

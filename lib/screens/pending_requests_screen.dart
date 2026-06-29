@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
+import '../models/change_request.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/change_request_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Screen displaying pending debt entries in two sections:
 /// 1. Entries the current user created (waiting for linked user to accept/reject)
 /// 2. Entries others created linking to current user (needs your approval)
+/// Plus change requests section for pending edits
 class PendingRequestsScreen extends StatelessWidget {
   const PendingRequestsScreen({super.key});
 
@@ -16,11 +19,17 @@ class PendingRequestsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final userId = context.read<AuthProvider>().user!.uid;
     final provider = context.watch<SharedEntryProvider>();
+    final changeProvider = context.watch<ChangeRequestProvider>();
     final waitingForOther = provider.pendingFromMe;
     final needsMyApproval = provider.pendingApprovals;
+    final incomingChanges = changeProvider.incomingRequests;
+    final outgoingChanges = changeProvider.outgoingRequests;
     final theme = Theme.of(context);
 
-    final isEmpty = waitingForOther.isEmpty && needsMyApproval.isEmpty;
+    final isEmpty = waitingForOther.isEmpty &&
+        needsMyApproval.isEmpty &&
+        incomingChanges.isEmpty &&
+        outgoingChanges.isEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pending Requests')),
@@ -78,6 +87,34 @@ class PendingRequestsScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   ...needsMyApproval.map((entry) => _ApprovalCard(
                         entry: entry,
+                        userId: userId,
+                      )),
+                  const SizedBox(height: 20),
+                ],
+                if (incomingChanges.isNotEmpty) ...[
+                  _SectionHeader(
+                    title: 'Change requests',
+                    subtitle: 'Edits proposed by others — accept or reject',
+                    count: incomingChanges.length,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 8),
+                  ...incomingChanges.map((request) => _IncomingChangeCard(
+                        request: request,
+                        userId: userId,
+                      )),
+                  const SizedBox(height: 20),
+                ],
+                if (outgoingChanges.isNotEmpty) ...[
+                  _SectionHeader(
+                    title: 'Your change requests',
+                    subtitle: 'Edits you proposed — awaiting the other person',
+                    count: outgoingChanges.length,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 8),
+                  ...outgoingChanges.map((request) => _OutgoingChangeCard(
+                        request: request,
                         userId: userId,
                       )),
                 ],
@@ -361,24 +398,326 @@ class _ApprovalCard extends StatelessWidget {
 
   Future<void> _accept(BuildContext context) async {
     final provider = context.read<SharedEntryProvider>();
-    await provider.editEntry(
-      entry: entry.copyWith(approvalStatus: ApprovalStatus.active),
+    final success = await provider.editEntryFromMap(
+      entryId: entry.id,
+      data: {
+        'approvalStatus': ApprovalStatus.active.name,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
     );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request accepted')),
+        SnackBar(
+          content: Text(
+            success ? 'Request accepted' : 'Failed to accept request',
+          ),
+        ),
       );
     }
   }
 
   Future<void> _reject(BuildContext context) async {
     final provider = context.read<SharedEntryProvider>();
-    await provider.editEntry(
-      entry: entry.copyWith(approvalStatus: ApprovalStatus.rejected),
+    final success = await provider.editEntryFromMap(
+      entryId: entry.id,
+      data: {
+        'approvalStatus': ApprovalStatus.rejected.name,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
     );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request rejected')),
+        SnackBar(
+          content: Text(
+            success ? 'Request rejected' : 'Failed to reject request',
+          ),
+        ),
+      );
+    }
+  }
+}
+
+/// Card for incoming change requests — shows what changed and accept/reject buttons.
+class _IncomingChangeCard extends StatelessWidget {
+  final ChangeRequest request;
+  final String userId;
+
+  const _IncomingChangeCard({required this.request, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sharedProvider = context.read<SharedEntryProvider>();
+
+    // Find the current entry to describe changes
+    final currentEntry = sharedProvider.entries
+        .where((e) => e.id == request.entryId)
+        .toList();
+
+    List<String> changes = [];
+    if (currentEntry.isNotEmpty) {
+      changes = request.describeChanges(currentEntry.first);
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.tertiaryContainer,
+                  child: Icon(
+                    Icons.edit_note,
+                    color: theme.colorScheme.tertiary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${request.requestedByName} wants to edit',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Entry: ${currentEntry.isNotEmpty ? currentEntry.first.personName : 'Unknown'}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (changes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Proposed changes:',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...changes.map((change) => Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            change,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _reject(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Reject'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _accept(context),
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('Accept'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _accept(BuildContext context) async {
+    final provider = context.read<ChangeRequestProvider>();
+    final success = await provider.acceptRequest(request: request);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Changes applied'
+              : 'Failed to apply changes'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _reject(BuildContext context) async {
+    final provider = context.read<ChangeRequestProvider>();
+    final success = await provider.rejectRequest(request: request);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Changes rejected'
+              : 'Failed to reject changes'),
+        ),
+      );
+    }
+  }
+}
+
+/// Card for outgoing change requests — shows what was proposed and cancel button.
+class _OutgoingChangeCard extends StatelessWidget {
+  final ChangeRequest request;
+  final String userId;
+
+  const _OutgoingChangeCard({required this.request, required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sharedProvider = context.read<SharedEntryProvider>();
+
+    // Find the current entry to describe changes
+    final currentEntry = sharedProvider.entries
+        .where((e) => e.id == request.entryId)
+        .toList();
+
+    List<String> changes = [];
+    if (currentEntry.isNotEmpty) {
+      changes = request.describeChanges(currentEntry.first);
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.hourglass_top,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your edit request',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Entry: ${currentEntry.isNotEmpty ? currentEntry.first.personName : 'Unknown'} — waiting for ${request.linkedUserName}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (changes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Proposed changes:',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ...changes.map((change) => Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            change,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        )),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _cancel(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Cancel Request'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _cancel(BuildContext context) async {
+    final provider = context.read<ChangeRequestProvider>();
+    final success = await provider.cancelRequest(request: request);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Request cancelled'
+              : 'Failed to cancel request'),
+        ),
       );
     }
   }

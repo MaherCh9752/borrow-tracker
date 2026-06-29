@@ -401,37 +401,46 @@ class SharedEntryProvider extends ChangeNotifier {
 
   Future<bool> addEntry({required SharedEntry entry}) async {
     try {
-      await _sharedEntryService.addEntry(entry: entry).timeout(
-            const Duration(milliseconds: 500),
-          );
+      await _sharedEntryService.addEntry(entry: entry);
       return true;
     } catch (e) {
       debugPrint('[SharedEntryProvider] addEntry: $e');
-      return true;
+      return false;
     }
   }
 
   Future<bool> editEntry({required SharedEntry entry}) async {
     try {
-      await _sharedEntryService.editEntry(entry: entry).timeout(
-            const Duration(milliseconds: 500),
-          );
+      await _sharedEntryService.editEntry(entry: entry);
       return true;
     } catch (e) {
       debugPrint('[SharedEntryProvider] editEntry: $e');
+      return false;
+    }
+  }
+
+  /// Partial update — only writes the fields in [data], preserving all others
+  /// (including `participants`).
+  Future<bool> editEntryFromMap({
+    required String entryId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      await _sharedEntryService.editEntryFromMap(entryId: entryId, data: data);
       return true;
+    } catch (e) {
+      debugPrint('[SharedEntryProvider] editEntryFromMap: $e');
+      return false;
     }
   }
 
   Future<bool> deleteEntry({required String entryId}) async {
     try {
-      await _sharedEntryService
-          .deleteEntry(entryId: entryId)
-          .timeout(const Duration(milliseconds: 500));
+      await _sharedEntryService.deleteEntry(entryId: entryId);
       return true;
     } catch (e) {
       debugPrint('[SharedEntryProvider] deleteEntry: $e');
-      return true;
+      return false;
     }
   }
 

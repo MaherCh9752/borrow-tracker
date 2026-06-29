@@ -9,7 +9,7 @@ import '../services/auth_service.dart';
 /// When no users found, shows invite options via [onInviteTap].
 class UserSearchField extends StatefulWidget {
   final TextEditingController? controller;
-  final ValueChanged<String>? onSelected;
+  final ValueChanged<String?>? onSelected;
   final VoidCallback? onInviteTap;
   final String? hintText;
   final String? labelText;
@@ -291,7 +291,7 @@ class _UserSearchFieldState extends State<UserSearchField> {
       _error = null;
       _showNoResults = false;
     });
-    widget.onSelected?.call('');
+    widget.onSelected?.call(null);
   }
 
   @override

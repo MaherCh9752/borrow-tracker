@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:workmanager/workmanager.dart';
 import 'providers/auth_provider.dart';
+import 'providers/change_request_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/entry_provider.dart';
 import 'providers/shared_entry_provider.dart';
@@ -50,6 +51,7 @@ class BorrowTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => ChangeRequestProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

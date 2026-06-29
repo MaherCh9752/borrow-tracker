@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/change_request_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../services/invite_service.dart';
 import '../widgets/user_search_field.dart';
@@ -144,11 +145,13 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
         createdByName: widget.isEditing
             ? widget.entry!.createdByName
             : context.read<AuthProvider>().user?.displayName,
-        participants: [
-          userId,
-          if (_selectedPersonId != null && _selectedPersonId != userId)
-            _selectedPersonId!,
-        ],
+        participants: widget.isEditing
+            ? widget.entry!.participants
+            : [
+                userId,
+                if (_selectedPersonId != null && _selectedPersonId != userId)
+                  _selectedPersonId!,
+              ],
         linkedUserId: _selectedPersonId ?? widget.entry?.linkedUserId,
         linkedUserName: _selectedPersonName ?? widget.entry?.linkedUserName,
         approvalStatus: widget.isEditing
@@ -158,7 +161,36 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
 
       bool success;
       if (widget.isEditing) {
-        success = await sharedEntryProvider.editEntry(entry: entry);
+        // Create a change request instead of directly editing
+        final proposedChanges = <String, dynamic>{
+          'personName': entry.personName,
+          'amount': entry.amount,
+          'currency': entry.currency,
+          'type': entry.type.name,
+          'notes': entry.notes,
+          'deadline': entry.deadline?.toIso8601String(),
+          'status': entry.status.name,
+          'linkedUserId': entry.linkedUserId,
+          'linkedUserName': entry.linkedUserName,
+          'updatedAt': DateTime.now().toIso8601String(),
+        };
+
+        final changeRequestProvider = context.read<ChangeRequestProvider>();
+        success = await changeRequestProvider.createChangeRequest(
+          currentEntry: widget.entry!,
+          proposedChanges: proposedChanges,
+          requestedByName:
+              context.read<AuthProvider>().user?.displayName ?? '',
+        );
+
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Change request sent for approval'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
         success = await sharedEntryProvider.addEntry(entry: entry);
       }
@@ -169,7 +201,12 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     } catch (e) {
       debugPrint('[AddEditEntry] _save: $e');
       if (mounted) {
-        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save entry. Please try again.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -350,7 +387,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Text(
-                          widget.isEditing ? 'Update Entry' : 'Add Entry',
+                          widget.isEditing ? 'Submit for Approval' : 'Add Entry',
                           style: const TextStyle(fontSize: 16),
                         ),
                 ),

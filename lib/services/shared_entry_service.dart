@@ -23,6 +23,14 @@ class SharedEntryService {
     await _sharedEntriesRef.doc(entry.id).update(entry.toMap());
   }
 
+  /// Updates an existing shared entry with a raw map (for applying change requests).
+  Future<void> editEntryFromMap({
+    required String entryId,
+    required Map<String, dynamic> data,
+  }) async {
+    await _sharedEntriesRef.doc(entryId).update(data);
+  }
+
   /// Deletes a shared entry by document ID.
   Future<void> deleteEntry({required String entryId}) async {
     await _sharedEntriesRef.doc(entryId).delete();
