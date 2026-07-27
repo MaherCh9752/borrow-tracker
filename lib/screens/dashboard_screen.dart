@@ -394,12 +394,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             MaterialPageRoute(builder: (_) => const StatisticsScreen()));
         break;
       case _MenuAction.exportCsv:
-        if (sharedEntryProvider.entries.isNotEmpty) {
+        if (sharedEntryProvider.activeEntries.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => CsvPreviewScreen(
-                entries: sharedEntryProvider.entries,
+                entries: sharedEntryProvider.activeEntries,
                 currentUserId: sharedEntryProvider.currentUserId,
               ),
             ),
@@ -407,12 +407,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         break;
       case _MenuAction.exportPdf:
-        if (sharedEntryProvider.entries.isNotEmpty) {
+        if (sharedEntryProvider.activeEntries.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => PdfPreviewScreen(
-                entries: sharedEntryProvider.entries,
+                entries: sharedEntryProvider.activeEntries,
                 currentUserId: sharedEntryProvider.currentUserId,
               ),
             ),

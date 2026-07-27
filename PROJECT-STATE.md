@@ -82,7 +82,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Accept**: Applies proposed changes to the entry via `editEntryFromMap()` (preserves `participants`)
 - **Reject**: Discards proposed changes — entry unchanged
 - **Cancel**: Creator can cancel their own pending change request
-- Change request participants derived from the original entry's `linkedUserId`
+- Approver determined dynamically: creator edits → linked user approves, linked user edits → creator approves
 - Diff display shows exactly what changed (amount, type, currency, status, deadline, notes, person)
 
 ### User Invitation System
@@ -311,7 +311,25 @@ lib/
 - Deep links for invite acceptance (invite preview screen only — no deep link handler yet)
 - Background invite checking (invites expire silently — no notification to creator)
 
-## Bug Fixes (June 2026)
+## Bug Fixes (July 2026)
+
+### Change request approval routing — wrong approver when linked user edits
+
+**File:** `lib/providers/change_request_provider.dart:69`
+
+**Root cause:** When creating a change request, `linkedUserId` was always set to `currentEntry.linkedUserId`. If the linked user (User B) edited an entry, the change request had `linkedUserId = User B`, making User B both the requester and the approver. The request never appeared in the creator's (User A) pending requests.
+
+**Fix:** Determines the correct approver dynamically:
+- If the **creator** edits → the **linked user** approves (`entry.linkedUserId`)
+- If the **linked user** edits → the **creator** approves (`entry.createdBy`)
+
+### Export CSV/PDF included pending approval entries
+
+**Files:** `lib/screens/dashboard_screen.dart:402,415`
+
+**Root cause:** Both export paths passed `sharedEntryProvider.entries` (all entries including pending approval) instead of `sharedEntryProvider.activeEntries` (only entries with `approvalStatus == ACTIVE`).
+
+**Fix:** Changed both export calls to use `activeEntries`.
 
 ### Entry disappearing for other user after edit — 6 root causes fixed
 

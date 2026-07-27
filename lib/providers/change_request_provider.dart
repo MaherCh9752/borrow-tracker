@@ -61,18 +61,32 @@ class ChangeRequestProvider extends ChangeNotifier {
     required String requestedByName,
   }) async {
     try {
+      // Determine the correct approver:
+      // - If the creator is editing → the linked user approves
+      // - If the linked user is editing → the creator approves
+      final isCreator = _currentUserId == currentEntry.createdBy;
+      final approverUserId = isCreator
+          ? (currentEntry.linkedUserId ?? currentEntry.createdBy)
+          : currentEntry.createdBy;
+      final approverUserName = isCreator
+          ? (currentEntry.linkedUserName ?? currentEntry.createdByName)
+          : currentEntry.createdByName;
+
       final request = ChangeRequest(
         id: '',
         entryId: currentEntry.id,
         requestedBy: _currentUserId,
         requestedByName: requestedByName,
-        linkedUserId: currentEntry.linkedUserId ?? '',
-        linkedUserName: currentEntry.linkedUserName ?? '',
+        linkedUserId: approverUserId,
+        linkedUserName: approverUserName ?? '',
         participants: [
           _currentUserId,
           if (currentEntry.linkedUserId != null &&
               currentEntry.linkedUserId != _currentUserId)
             currentEntry.linkedUserId!,
+          if (currentEntry.createdBy != _currentUserId &&
+              currentEntry.createdBy != currentEntry.linkedUserId)
+            currentEntry.createdBy,
         ],
         proposedChanges: proposedChanges,
         status: ChangeRequestStatus.pending,
