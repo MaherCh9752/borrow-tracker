@@ -26,14 +26,27 @@ class SecurityProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Load saved preference.
-    final savedValue = await _secureStorage.read(
-      key: AppConstants.secureStorageAppLockKey,
-    );
-    _appLockEnabled = savedValue == 'true';
+    // Load saved preference (with timeout — Keystore can hang on some MIUI devices).
+    try {
+      final savedValue = await _secureStorage.read(
+        key: AppConstants.secureStorageAppLockKey,
+      ).timeout(const Duration(seconds: 5));
+      _appLockEnabled = savedValue == 'true';
+    } catch (e) {
+      debugPrint('[Security] Secure storage read failed or timed out: $e');
+      _appLockEnabled = false;
+    }
 
-    // Check biometric availability.
-    _availability = await _biometricService.checkAvailability();
+    // Check biometric availability with timeout — some MIUI devices (e.g. Redmi 13C)
+    // hang indefinitely on canCheckBiometrics / getAvailableBiometrics.
+    try {
+      _availability = await _biometricService.checkAvailability().timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('[Security] Biometric check timed out or failed: $e');
+      _availability = null;
+    }
 
     // If app lock is enabled but biometrics unavailable, disable it.
     if (_appLockEnabled && !(_availability?.isAvailable ?? false)) {
@@ -120,7 +133,14 @@ class SecurityProvider extends ChangeNotifier {
 
   /// Re-checks biometric availability (e.g. user may have added/removed biometrics).
   Future<void> refreshAvailability() async {
-    _availability = await _biometricService.checkAvailability();
+    try {
+      _availability = await _biometricService.checkAvailability().timeout(
+        const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('[Security] Refresh availability timed out: $e');
+      _availability = null;
+    }
 
     // Auto-disable if biometrics became unavailable.
     if (_appLockEnabled && !(_availability?.isAvailable ?? false)) {

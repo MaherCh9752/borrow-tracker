@@ -4,6 +4,25 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 
 ---
 
+## Quick Start Walkthrough
+
+This scenario walks two users through the core workflow end-to-end.
+
+1. **User A signs up** → enters name, email, password
+2. **User A adds a shared entry** → taps **+**, searches for **User B**, enters amount "50 TND" as "I Lent", sets a deadline 3 days out, saves
+3. **User B signs in** → sees a badge on the hamburger menu
+4. **User B approves the entry** → hamburger menu → **Pending Requests** → **Accept**
+5. **User A checks the dashboard** → sees the entry counted in totals
+6. **User A edits the entry** → changes amount from 50 to 75 → **Submit for Approval**
+7. **User B reviews & accepts** → **Pending Requests** → **Change Requests** → **Accept**
+8. **Try exports** → hamburger menu → **Export to CSV** / **Export to PDF**
+9. **Try notifications** → hamburger menu → **Notifications** → set a reminder time
+10. **Try offline** → enable airplane mode → add/edit entries → disable airplane mode → everything syncs
+
+> For a two-device test, install the app on two phones or use an emulator + physical device.
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -11,6 +30,7 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 - Flutter SDK 3.35+
 - Dart SDK 3.9+
 - A Firebase project with **Authentication** (email/password) and **Cloud Firestore** enabled
+- Two devices or accounts to test shared features (optional but recommended)
 
 ### Installation
 
@@ -40,7 +60,9 @@ flutter run
 
 ---
 
-## How to Try Every Feature
+## Feature Walkthrough
+
+*Each section below is independent — jump to whatever interests you.*
 
 ### 1. Authentication
 
@@ -403,13 +425,13 @@ lib/
 | QR Codes | qr_flutter |
 | Sharing | share_plus |
 | Biometrics | local_auth + flutter_secure_storage |
-| Persistence | shared_preferences (theme, first-run flags) |
+| Persistence | shared_preferences (theme) + path_provider (first-run flag) |
 
 ---
 
 ## Project Status
 
-All planned features are implemented and verified. See [PROJECT-STATE.md](PROJECT-STATE.md) for the detailed feature list, architecture, and changelog.
+All planned features are implemented and verified. See [PROJECT-STATE.md](PROJECT-STATE.md) for the detailed feature list, architecture, and bug-fix changelog.
 
 ---
 

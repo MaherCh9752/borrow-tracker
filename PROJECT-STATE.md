@@ -313,6 +313,67 @@ lib/
 
 ## Bug Fixes (July 2026)
 
+### MIUI / Redmi 13C stability — platform channel timeouts (3 fixes)
+
+**Problem:** On Xiaomi/Redmi devices running MIUI/HyperOS, several platform channel calls could hang indefinitely, causing:
+- Infinite loading spinner at startup (app never reaches `runApp()` or stays stuck in `AuthWrapper`)
+- First-run notification prompt never appearing on fresh install
+
+---
+
+### Fix 1: Timeouts on all platform-channel calls in main() + providers
+
+**Files:** `lib/main.dart`, `lib/providers/security_provider.dart`, `lib/services/biometric_service.dart`
+
+**Root cause:** `Firebase.initializeApp()`, `Workmanager().initialize()`, `local_auth.canCheckBiometrics`, `flutter_secure_storage.read()`, and `SharedPreferences.getInstance()` each make platform channel calls that can hang on MIUI. The code had zero timeouts, so a single hang blocked the app forever.
+
+**Fixes:**
+- `main()`: 10s timeout on `Firebase.initializeApp()`, 5s timeout on `Workmanager().initialize()`
+- `SecurityProvider.initialize()`: 5s timeout on `_secureStorage.read()`, 5s timeout on `_biometricService.checkAvailability()`
+- `BiometricService.checkAvailability()`: 4s timeout on `canCheckBiometrics` + 4s timeout on `getAvailableBiometrics()` with explicit `TimeoutException` handlers
+- `FirstRunGate._check()`: 3s timeout on `SharedPreferences.getInstance()`
+
+---
+
+### Fix 2: Auth state fallback when authStateChanges stream never fires
+
+**File:** `lib/providers/auth_provider.dart`
+
+**Root cause:** `AuthProvider` relied entirely on the `FirebaseAuth.authStateChanges()` stream to determine auth status. If the stream never fired (e.g. platform channel hang on MIUI), `_status` stayed `AuthStatus.unknown` forever, keeping the loading spinner visible.
+
+**Fix:**
+- Check `FirebaseAuth.instance.currentUser` **synchronously** in the constructor — if a cached session exists, the user is immediately authenticated without waiting for the stream
+- Added an 8-second fallback `Timer`: if the stream hasn't fired by then, forces `AuthStatus.unauthenticated` so the user at least sees the login screen
+- Timer is cancelled if the stream fires normally
+
+---
+
+### Fix 3: First-run notification prompt — file-based persistence + widget-tree rendering
+
+**File:** `lib/main.dart`
+
+**Root cause (two issues):**
+1. **`showDialog` + `addPostFrameCallback` unreliable on MIUI** — The dialog was scheduled via post-frame callback and rendered as a Navigator route. On MIUI, this timing could fail silently, and the dialog never appeared.
+2. **SharedPreferences persistence crossing install boundaries** — MIUI's backup system ("MIUI optimization") can restore SharedPreferences data after uninstall/reinstall, making the app think the prompt was already shown.
+
+**Fixes:**
+- Replaced `showDialog` with a **full-screen widget** (`_NotificationPrompt`) rendered directly in the `build` method — no Navigator dependency
+- Replaced `SharedPreferences`-based first-run detection with a **file-based flag** (`path_provider.getApplicationDocumentsDirectory() + .borrow_tracker_prompt` file) — survives app restarts but not MIUI backup restores
+- Added `path_provider: ^2.1.0` to `pubspec.yaml`
+- Still writes to `SharedPreferences` as a secondary record (for `notification_enabled_from_boot`)
+
+---
+
+### Fix 4: Removed empty android:taskAffinity in AndroidManifest.xml
+
+**File:** `android/app/src/main/AndroidManifest.xml`
+
+**Root cause:** Empty `android:taskAffinity=""` is non-standard and can cause unpredictable task-stack behavior on MIUI's custom task manager.
+
+**Fix:** Removed the attribute entirely (defaults to the package name).
+
+---
+
 ### Change request approval routing — wrong approver when linked user edits
 
 **File:** `lib/providers/change_request_provider.dart:69`

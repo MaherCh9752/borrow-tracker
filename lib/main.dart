@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +24,15 @@ import 'utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Platform channel calls (Firebase, WorkManager, etc.) can hang
+  // indefinitely on some devices (e.g. Redmi 13C / MIUI).  Wrap each
+  // in a timeout so the app always reaches runApp().
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
+  } catch (e) {
+    debugPrint('[Main] Firebase init failed or timed out: $e');
+  }
 
   // Enable Firestore offline persistence (default on mobile, explicit for clarity).
   FirebaseFirestore.instance.settings = const Settings(
@@ -30,9 +41,11 @@ void main() async {
   );
 
   try {
-    await Workmanager().initialize(notificationCallbackDispatcher);
+    await Workmanager()
+        .initialize(notificationCallbackDispatcher)
+        .timeout(const Duration(seconds: 5));
   } catch (e) {
-    debugPrint('[Main] WorkManager init failed: $e');
+    debugPrint('[Main] WorkManager init failed or timed out: $e');
   }
   runApp(const BorrowTrackerApp());
 }
@@ -78,6 +91,7 @@ class FirstRunGate extends StatefulWidget {
 
 class _FirstRunGateState extends State<FirstRunGate> {
   bool _checking = true;
+  bool _showPrompt = false;
 
   @override
   void initState() {
@@ -85,43 +99,46 @@ class _FirstRunGateState extends State<FirstRunGate> {
     _check();
   }
 
-  Future<void> _check() async {
-    final prefs = await SharedPreferences.getInstance();
-    final shown = prefs.getBool('notification_prompt_shown') ?? false;
-    if (mounted) {
-      if (!shown) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showPrompt();
-        });
-      }
-      setState(() => _checking = false);
+  /// Returns the app's persistent directory for storing first-run flags.
+  /// Falls back to a temp directory if unavailable.
+  Future<Directory> _storageDir() async {
+    try {
+      final paths = await getApplicationDocumentsDirectory();
+      return paths;
+    } catch (_) {}
+    return Directory.systemTemp;
+  }
+
+  Future<File> _flagFile() async {
+    final dir = await _storageDir();
+    return File('${dir.path}/.borrow_tracker_prompt');
+  }
+
+  Future<bool> _hasPromptBeenShown() async {
+    try {
+      return await _flagFile().then((f) => f.exists());
+    } catch (_) {
+      return false;
     }
   }
 
-  Future<void> _showPrompt() async {
-    final action = await showDialog<_NotificationAction>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Stay on Track'),
-        content: const Text(
-          'Enable notifications to get reminded about upcoming deadlines '
-          'and overdue payments.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, _NotificationAction.skip),
-            child: const Text('Skip'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, _NotificationAction.enable),
-            child: const Text('Enable'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _markPromptShown() async {
+    try {
+      await (await _flagFile()).create();
+    } catch (_) {}
+  }
 
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _check() async {
+    final shown = await _hasPromptBeenShown();
+    if (mounted) {
+      setState(() {
+        _checking = false;
+        _showPrompt = !shown;
+      });
+    }
+  }
+
+  Future<void> _handleNotificationAction(_NotificationAction action) async {
     bool enabled = false;
 
     if (action == _NotificationAction.enable) {
@@ -142,9 +159,21 @@ class _FirstRunGateState extends State<FirstRunGate> {
       }
     }
 
-    await prefs.setBool('notification_prompt_shown', true);
-    await prefs.setBool('notification_enabled_from_boot', enabled);
-    if (mounted) setState(() {});
+    try {
+      await _markPromptShown();
+      // Also persist via SharedPreferences as a secondary record.
+      SharedPreferences? prefs;
+      try {
+        prefs = await SharedPreferences.getInstance().timeout(
+          const Duration(seconds: 3),
+        );
+      } catch (_) {}
+      await prefs?.setBool('notification_prompt_shown', true);
+      await prefs?.setBool('notification_enabled_from_boot', enabled);
+    } catch (e) {
+      debugPrint('[FirstRun] Save failed: $e');
+    }
+    if (mounted) setState(() => _showPrompt = false);
   }
 
   @override
@@ -154,11 +183,87 @@ class _FirstRunGateState extends State<FirstRunGate> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    if (_showPrompt) {
+      return _NotificationPrompt(
+        onSkip: () => _handleNotificationAction(_NotificationAction.skip),
+        onEnable: () => _handleNotificationAction(_NotificationAction.enable),
+      );
+    }
+
     return const AuthWrapper();
   }
 }
 
 enum _NotificationAction { skip, enable }
+
+/// Full-screen notification prompt that replaces showDialog so it works
+/// reliably on devices where Navigator-based dialogs may not appear (MIUI).
+class _NotificationPrompt extends StatelessWidget {
+  final VoidCallback onSkip;
+  final VoidCallback onEnable;
+
+  const _NotificationPrompt({
+    required this.onSkip,
+    required this.onEnable,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.notifications_outlined,
+                size: 64,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Stay on Track',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Enable notifications to get reminded about upcoming deadlines '
+                'and overdue payments.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: onEnable,
+                  icon: const Icon(Icons.notifications_active),
+                  label: const Text('Enable'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: onSkip,
+                  child: const Text('Skip'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Observes app lifecycle and notifies SecurityProvider on resume.
 class _AppLifecycleObserver extends StatefulWidget {

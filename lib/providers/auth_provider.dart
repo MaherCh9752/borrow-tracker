@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -7,6 +8,7 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  Timer? _fallbackTimer;
 
   AuthStatus _status = AuthStatus.unknown;
   UserModel? _user;
@@ -18,10 +20,40 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
 
   AuthProvider() {
+    // Check synchronous cached state first — avoids waiting for the stream.
+    final cachedUser = _authService.currentUser;
+    if (cachedUser != null) {
+      _status = AuthStatus.authenticated;
+      _user = UserModel.fromFirebaseUser(
+        cachedUser.uid,
+        cachedUser.email ?? '',
+        cachedUser.displayName,
+      );
+    }
+
+    // Listen for auth state changes.
     _authService.authStateChanges.listen(_onAuthStateChanged);
+
+    // Fallback: if the stream never fires (e.g. platform channel hangs on
+    // certain MIUI devices), force unauthenticated after a few seconds.
+    _fallbackTimer = Timer(const Duration(seconds: 8), () {
+      if (_status == AuthStatus.unknown) {
+        _status = AuthStatus.unauthenticated;
+        _user = null;
+        notifyListeners();
+        debugPrint('[Auth] Fallback timer fired — forcing unauthenticated');
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _fallbackTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _onAuthStateChanged(User? firebaseUser) async {
+    _fallbackTimer?.cancel();
     if (firebaseUser != null) {
       _status = AuthStatus.authenticated;
       _user ??= UserModel.fromFirebaseUser(

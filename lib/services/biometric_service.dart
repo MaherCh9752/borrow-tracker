@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
@@ -46,13 +47,26 @@ class BiometricService {
   final LocalAuthentication _auth = LocalAuthentication();
 
   /// Checks whether the device supports biometrics and whether credentials are enrolled.
+  ///
+  /// On some MIUI devices (Redmi 13C, etc.) platform channel calls can hang
+  /// indefinitely, so each call is wrapped in a short timeout.
   Future<BiometricAvailability> checkAvailability() async {
     bool hasHardware = false;
     bool hasEnrolled = false;
     List<BiometricType> types = [];
 
     try {
-      hasHardware = await _auth.canCheckBiometrics;
+      hasHardware = await _auth.canCheckBiometrics.timeout(
+        const Duration(seconds: 4),
+      );
+    } on TimeoutException {
+      return BiometricAvailability(
+        isAvailable: false,
+        hasHardware: false,
+        hasEnrolled: false,
+        availableTypes: const [],
+        errorMessage: 'canCheckBiometrics timed out on this device',
+      );
     } on PlatformException catch (e) {
       return BiometricAvailability(
         isAvailable: false,
@@ -65,8 +79,18 @@ class BiometricService {
 
     if (hasHardware) {
       try {
-        types = await _auth.getAvailableBiometrics();
+        types = await _auth.getAvailableBiometrics().timeout(
+          const Duration(seconds: 4),
+        );
         hasEnrolled = types.isNotEmpty;
+      } on TimeoutException {
+        return BiometricAvailability(
+          isAvailable: false,
+          hasHardware: true,
+          hasEnrolled: false,
+          availableTypes: const [],
+          errorMessage: 'getAvailableBiometrics timed out on this device',
+        );
       } on PlatformException catch (e) {
         return BiometricAvailability(
           isAvailable: false,
