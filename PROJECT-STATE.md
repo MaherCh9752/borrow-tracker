@@ -384,6 +384,20 @@ lib/
 - If the **creator** edits → the **linked user** approves (`entry.linkedUserId`)
 - If the **linked user** edits → the **creator** approves (`entry.createdBy`)
 
+### Notifications firing for pending-approval entries / cross-user leaks
+
+**Files:** `lib/providers/notification_provider.dart`
+
+**Problem (cross-user):** `NotificationProvider` is a singleton. When User A signed out and User B signed in on the same device, `_entries` from User A persisted and old scheduled notifications (WorkManager + AlarmManager) were never cancelled — User A's reminders would fire while User B was using the app.
+
+**Fix:** At the start of `initialize()`, clear `_pending`, `_entries`, and call `_notificationService.cancelAll()` to remove all previous user's scheduled alarms before loading the new user's data.
+
+**Problem (pending-approval):** Entries with `approvalStatus: PENDING_APPROVAL` (waiting for the other user to confirm) were being treated as active entries and had deadline/overdue notifications scheduled alongside confirmed entries.
+
+**Fix:** Added a filter in both the stale-cleanup loop and the scheduling loop to skip `SharedEntry` instances where `approvalStatus != ApprovalStatus.active`. Notifications now only trigger for mutually confirmed entries.
+
+---
+
 ### Export CSV/PDF included pending approval entries
 
 **Files:** `lib/screens/dashboard_screen.dart:402,415`

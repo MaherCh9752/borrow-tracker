@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/borrow_lend.dart';
 import '../models/reminder_settings.dart';
+import '../models/shared_entry_model.dart';
 import '../services/notification_service.dart';
 import '../utils/constants.dart';
 
@@ -25,6 +26,11 @@ class NotificationProvider extends ChangeNotifier {
   bool get notificationsEnabled => _settings.notificationsEnabled;
 
   Future<void> initialize(String userId) async {
+    // Clear previous user's data and cancel their scheduled notifications
+    _pending = [];
+    _entries = [];
+    await _notificationService.cancelAll();
+
     _userId = userId;
     try {
       await _notificationService.initialize();
@@ -35,11 +41,8 @@ class NotificationProvider extends ChangeNotifier {
     await _applyBootPrefs();
     _ensureTimer();
     _initialized = true;
-    if (_entries.isNotEmpty && _settings.notificationsEnabled) {
-      // Schedule first, don't cancel — _scheduleAll replaces alarms by ID,
-      // so if scheduling fails, previous alarms survive.
-      await _scheduleAll(_entries);
-    }
+    // _entries was cleared above — _scheduleAll will fire only after
+    // onEntriesUpdated delivers this user's data from Firestore.
     notifyListeners();
   }
 
@@ -219,6 +222,11 @@ class NotificationProvider extends ChangeNotifier {
           await _notificationService.cancel(_notificationId(entry.id, offset));
         }
       }
+      if (entry is SharedEntry && entry.approvalStatus != ApprovalStatus.active) {
+        for (final offset in [0, 1, 2]) {
+          await _notificationService.cancel(_notificationId(entry.id, offset));
+        }
+      }
     }
 
     final now = DateTime.now();
@@ -226,6 +234,7 @@ class NotificationProvider extends ChangeNotifier {
 
     for (final entry in entries) {
       if (entry.status == EntryStatus.paid || entry.deadline == null) continue;
+      if (entry is SharedEntry && entry.approvalStatus != ApprovalStatus.active) continue;
 
       final deadline = entry.deadline!;
       final amountStr = '${entry.currency}${entry.amount.toStringAsFixed(2)}';

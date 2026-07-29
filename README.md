@@ -306,12 +306,22 @@ Open via the hamburger menu → **Notifications**.
 | Daily Overdue Reminder | Repeat daily until marked paid |
 | Reminder Time | Time of day for notifications (default 09:00) |
 
+**Behavior notes:**
+- Notifications only fire for **confirmed entries** (`ApprovalStatus: ACTIVE`) — entries waiting for the other user's approval are excluded
+- Notifications are **per-device per-user** — signing out cancels all scheduled notifications for the previous user
+
 **Test background notifications:**
 1. Add an entry with a deadline a few minutes from now
-2. Set the reminder time just before that deadline
-3. Close the app completely
-4. Wait — the notification appears at the scheduled time
-5. Reopen → mark as Paid → overdue reminders stop
+2. Confirm the entry on both ends (if shared)
+3. Set the reminder time just before that deadline
+4. Close the app completely
+5. Wait — the notification appears at the scheduled time
+6. Reopen → mark as Paid → overdue reminders stop
+
+**Test user isolation (multi-user on same device):**
+1. Sign in as User A → set up notifications with an upcoming deadline
+2. Sign out → sign in as User B on the same device
+3. Only User B's entries trigger notifications — User A's scheduled alarms are cancelled
 
 > On some Android devices, disable battery optimization for reliable background delivery.
 
