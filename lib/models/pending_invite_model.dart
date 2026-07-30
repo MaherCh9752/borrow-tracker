@@ -10,6 +10,7 @@ class PendingInvite {
   final String status;
   final DateTime createdAt;
   final DateTime expiresAt;
+  final String? entryId;
 
   PendingInvite({
     required this.inviteId,
@@ -20,6 +21,7 @@ class PendingInvite {
     required this.status,
     required this.createdAt,
     required this.expiresAt,
+    this.entryId,
   });
 
   /// Whether the invite has expired.
@@ -27,6 +29,30 @@ class PendingInvite {
 
   /// Whether the invite is still pending (not accepted or expired).
   bool get isPending => status == 'pending' && !isExpired;
+
+  PendingInvite copyWith({
+    String? inviteId,
+    String? token,
+    String? inviteCode,
+    String? createdBy,
+    String? targetPersonName,
+    String? status,
+    DateTime? createdAt,
+    DateTime? expiresAt,
+    String? entryId,
+  }) {
+    return PendingInvite(
+      inviteId: inviteId ?? this.inviteId,
+      token: token ?? this.token,
+      inviteCode: inviteCode ?? this.inviteCode,
+      createdBy: createdBy ?? this.createdBy,
+      targetPersonName: targetPersonName ?? this.targetPersonName,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      entryId: entryId ?? this.entryId,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -37,6 +63,7 @@ class PendingInvite {
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
       'expiresAt': Timestamp.fromDate(expiresAt),
+      'entryId': entryId,
     };
   }
 
@@ -51,6 +78,7 @@ class PendingInvite {
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       expiresAt: (map['expiresAt'] as Timestamp?)?.toDate() ??
           DateTime.now().add(const Duration(days: 7)),
+      entryId: map['entryId'],
     );
   }
 }

@@ -6,7 +6,9 @@ A production-ready Flutter mobile app for tracking borrowed and lent money — w
 
 ## Quick Start Walkthrough
 
-This scenario walks two users through the core workflow end-to-end.
+These scenarios walk through the core workflows end-to-end.
+
+### Scenario A: Both users already registered
 
 1. **User A signs up** → enters name, email, password
 2. **User A adds a shared entry** → taps **+**, searches for **User B**, enters amount "50 TND" as "I Lent", sets a deadline 3 days out, saves
@@ -18,6 +20,18 @@ This scenario walks two users through the core workflow end-to-end.
 8. **Try exports** → hamburger menu → **Export to CSV** / **Export to PDF**
 9. **Try notifications** → hamburger menu → **Notifications** → set a reminder time
 10. **Try offline** → enable airplane mode → add/edit entries → disable airplane mode → everything syncs
+
+### Scenario B: Inviting an unregistered user
+
+1. **User A signs up** → enters name, email, password
+2. **User A adds an entry for an unregistered user** → taps **+**, types "John" in the Person field → **No users found** appears
+3. **User A creates an invite** → taps **Share Link** → fills amount, deadline, etc. → taps **Add Entry**
+4. **Invite Preview** opens → copy the invite code (e.g. `XK7M2Q`)
+5. **Switch to User B's device** → open a fresh install of the app
+6. **User B signs up with the invite code** → enters `XK7M2Q` in the **Invite Code** field, taps **Verify** → name autofills as "John"
+7. **User B completes signup** → fills email + password → **Sign Up**
+8. **User B approves the entry** → hamburger menu → **Pending Requests** → **Needs your approval** → **Accept**
+9. **Both users see the entry** in their dashboard totals
 
 > For a two-device test, install the app on two phones or use an emulator + physical device.
 
@@ -45,12 +59,17 @@ flutter pub get
 1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
 2. Enable **Authentication** (email/password provider)
 3. Enable **Cloud Firestore**
-4. Deploy Firestore indexes and rules:
+4. Deploy Firestore indexes, rules, and (if needed) the Firebase config:
    ```bash
    firebase deploy --only firestore:indexes,rules
    ```
 5. Download `google-services.json` and place it in `android/app/`
 6. (Optional) Download `GoogleService-Info.plist` for iOS and place it in `ios/Runner/`
+
+> **Important:** Always deploy Firestore rules and indexes when pulling changes — the invite code lookup and entry linking depend on the latest security rules.
+> ```bash
+> firebase deploy --only firestore:rules,firestore:indexes
+> ```
 
 ### Run
 
@@ -181,18 +200,46 @@ When you edit a shared entry that links to another user, the change goes through
 
 ### 6. User Invitation System
 
-When you search for a user who isn't registered yet:
+When you search for a user who isn't registered yet, you can invite them to join the app and automatically link entries.
 
-1. Type a name in the Person field → **"No users found"**
-2. Two buttons appear: **QR Code** and **Share Link**
-3. Tap either → an invite is created and the **Invite Preview** screen opens
-4. The screen shows:
-   - **QR code** — scan to accept the invite
-   - **Invite code** — 6-character code (e.g. `XK7M2Q`)
+#### Creating an Invite
+
+1. Tap **+** to add an entry
+2. Type a name in the Person field → **"No users found"**
+3. Two buttons appear: **QR Code** and **Share Link**
+4. Tap either → the entry will be saved first, then an invite is created
+5. The **Invite Preview** screen opens showing:
+   - **QR code** — scan to download the app
+   - **Invite code** — 6-character uppercase code (e.g. `XK7M2Q`)
    - **Copy Code** button — copies to clipboard
-   - **Share Invite** button — opens system share sheet
+   - **Share Invite** button — opens system share sheet with code + download link
+6. Share the invite code with the new user via text, messaging, etc.
 
-Invites expire in 7 days and are stored in Firestore.
+Invites expire in 7 days.
+
+#### Signing Up with an Invite Code
+
+1. Open the app for the first time → **Sign Up** screen
+2. An optional **Invite Code** field appears below the display name
+3. Enter the code you received (e.g. `XK7M2Q`) and tap **Verify**
+4. The code is validated — your display name is autofilled with the name the creator entered
+5. You can change the name if desired
+6. Complete signup (email + password) → account is created
+7. **After signup**, the pending entry is automatically linked to your account:
+   - The entry appears in **Pending Requests** → **Needs your approval**
+   - You can **Accept** or **Reject** the entry
+   - Once accepted, the entry counts in dashboard totals and statistics
+
+#### Full End-to-End Flow
+
+| Step | User A (Creator) | User B (Invited) |
+|------|-----------------|-----------------|
+| 1 | Adds entry for "John", taps Invite | |
+| 2 | Shares invite code with John | |
+| 3 | | Downloads app, signs up with invite code |
+| 4 | | Name autofilled, completes signup |
+| 5 | | Sees entry in Pending Requests → Accept |
+| 6 | Sees entry confirmed on dashboard | Entry active in dashboard |
 
 ---
 

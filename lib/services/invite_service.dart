@@ -13,6 +13,7 @@ class InviteService {
   Future<PendingInvite> createInvite({
     required String createdBy,
     required String targetPersonName,
+    String? entryId,
   }) async {
     final token = _generateToken(32);
     final inviteCode = _generateInviteCode(6);
@@ -32,10 +33,22 @@ class InviteService {
       status: 'pending',
       createdAt: now,
       expiresAt: expiresAt,
+      entryId: entryId,
     );
 
     await docRef.set(invite.toMap());
     return invite;
+  }
+
+  /// Updates an invite with the entry ID after the entry is saved.
+  Future<void> updateInviteEntryId({
+    required String inviteId,
+    required String entryId,
+  }) async {
+    await _firestore
+        .collection(AppConstants.pendingInvitesCollection)
+        .doc(inviteId)
+        .update({'entryId': entryId});
   }
 
   /// Looks up an invite by its short [inviteCode].
@@ -59,6 +72,48 @@ class InviteService {
         .collection(AppConstants.pendingInvitesCollection)
         .doc(inviteId)
         .update({'status': 'accepted'});
+  }
+
+  /// Processes an invite after a new user signs up:
+  /// 1. Re-fetches the invite from Firestore (to get the latest entryId)
+  /// 2. Accepts the invite
+  /// 3. Links the new user to the shared entry using FieldValue.arrayUnion
+  ///    (no read needed, so the new user doesn't need to be a participant yet)
+  Future<void> processInviteAfterSignup({
+    required PendingInvite invite,
+    required String newUserId,
+    required String newUserDisplayName,
+  }) async {
+    // Re-fetch the invite from Firestore to get the latest entryId,
+    // which may have been set after the user verified their invite code
+    // on the signup screen.
+    final freshDoc = await _firestore
+        .collection(AppConstants.pendingInvitesCollection)
+        .doc(invite.inviteId)
+        .get();
+
+    String? entryId;
+    if (freshDoc.exists) {
+      entryId = freshDoc.data()?['entryId'] as String?;
+    }
+
+    await acceptInvite(invite.inviteId);
+
+    if (entryId == null || entryId.isEmpty) return;
+
+    // Use FieldValue.arrayUnion to add the new user to participants without
+    // needing to read the current list first (the new user isn't a participant
+    // yet, so a read would be denied by Firestore rules).
+    final entryRef = _firestore
+        .collection(AppConstants.sharedEntriesCollection)
+        .doc(entryId);
+
+    await entryRef.update({
+      'participants': FieldValue.arrayUnion([newUserId]),
+      'linkedUserId': newUserId,
+      'linkedUserName': newUserDisplayName,
+      'updatedAt': DateTime.now().toIso8601String(),
+    });
   }
 
   /// Generates a cryptographically random alphanumeric [length]-char token.

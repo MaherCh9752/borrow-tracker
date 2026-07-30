@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/pending_invite_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/invite_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,15 +17,50 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _displayNameController = TextEditingController();
+  final _inviteCodeController = TextEditingController();
+  final _inviteService = InviteService();
   bool _obscurePassword = true;
   bool _isLoading = false;
+  PendingInvite? _verifiedInvite;
+  bool _isVerifyingInvite = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _displayNameController.dispose();
+    _inviteCodeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _verifyInviteCode() async {
+    final code = _inviteCodeController.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() => _isVerifyingInvite = true);
+
+    try {
+      final invite = await _inviteService.lookupByCode(code);
+      if (!mounted) return;
+
+      if (invite != null) {
+        setState(() {
+          _verifiedInvite = invite;
+          _displayNameController.text = invite.targetPersonName;
+        });
+        _showSuccess('Invite code verified! Name filled in.');
+      } else {
+        setState(() => _verifiedInvite = null);
+        _showError('Invalid or expired invite code.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _verifiedInvite = null);
+        _showError('Failed to verify code. Try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isVerifyingInvite = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -45,6 +82,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _emailController.text.trim(),
         _passwordController.text,
         _displayNameController.text.trim(),
+        invite: _verifiedInvite,
       );
     }
 
@@ -64,6 +102,17 @@ class _AuthScreenState extends State<AuthScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: theme.colorScheme.error,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: theme.colorScheme.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -157,9 +206,17 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (!_isLogin)
                     TextFormField(
                       controller: _displayNameController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Display Name',
-                        prefixIcon: Icon(Icons.person),
+                        prefixIcon: const Icon(Icons.person),
+                        suffixIcon: _verifiedInvite != null
+                            ? IconButton(
+                                icon: const Icon(Icons.check_circle,
+                                    color: Colors.green),
+                                tooltip: 'Filled from invite code',
+                                onPressed: null,
+                              )
+                            : null,
                       ),
                       textCapitalization: TextCapitalization.words,
                       validator: (value) {
@@ -168,6 +225,57 @@ class _AuthScreenState extends State<AuthScreen> {
                         }
                         return null;
                       },
+                    ),
+                  if (!_isLogin) const SizedBox(height: 16),
+                  if (!_isLogin)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _inviteCodeController,
+                            decoration: InputDecoration(
+                              labelText: 'Invite Code (optional)',
+                              hintText: 'e.g. ABC123',
+                              prefixIcon: const Icon(Icons.vpn_key),
+                              suffixIcon: _verifiedInvite != null
+                                  ? const Icon(Icons.check_circle,
+                                        color: Colors.green, size: 20)
+                                  : null,
+                            ),
+                            textCapitalization: TextCapitalization.characters,
+                            onChanged: (_) {
+                              if (_verifiedInvite != null) {
+                                setState(() => _verifiedInvite = null);
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 56,
+                          child: _isVerifyingInvite
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                )
+                              : ElevatedButton(
+                                  onPressed: _verifiedInvite != null
+                                      ? null
+                                      : _verifyInviteCode,
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                  ),
+                                  child: const Text('Verify'),
+                                ),
+                        ),
+                      ],
                     ),
                   if (!_isLogin) const SizedBox(height: 16),
                   TextFormField(
@@ -255,6 +363,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           setState(() {
                             _isLogin = !_isLogin;
                             _formKey.currentState?.reset();
+                            _verifiedInvite = null;
+                            _inviteCodeController.clear();
                           });
                           context.read<AuthProvider>().clearError();
                         },

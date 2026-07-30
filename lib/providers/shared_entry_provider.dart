@@ -399,13 +399,13 @@ class SharedEntryProvider extends ChangeNotifier {
     );
   }
 
-  Future<bool> addEntry({required SharedEntry entry}) async {
+  Future<String?> addEntry({required SharedEntry entry}) async {
     try {
-      await _sharedEntryService.addEntry(entry: entry);
-      return true;
+      final saved = await _sharedEntryService.addEntry(entry: entry);
+      return saved.id;
     } catch (e) {
       debugPrint('[SharedEntryProvider] addEntry: $e');
-      return false;
+      return null;
     }
   }
 

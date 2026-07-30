@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/pending_invite_model.dart';
 import '../services/auth_service.dart';
+import '../services/invite_service.dart';
 import '../models/user_model.dart';
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -89,7 +91,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Register a new user.
-  Future<bool> signUp(String email, String password, String displayName) async {
+  Future<bool> signUp(
+    String email,
+    String password,
+    String displayName, {
+    PendingInvite? invite,
+  }) async {
     _error = null;
     notifyListeners();
     try {
@@ -99,6 +106,20 @@ class AuthProvider extends ChangeNotifier {
         displayName: displayName,
       );
       _status = AuthStatus.authenticated;
+
+      if (invite != null && _user != null) {
+        try {
+          final inviteService = InviteService();
+          await inviteService.processInviteAfterSignup(
+            invite: invite,
+            newUserId: _user!.uid,
+            newUserDisplayName: displayName,
+          );
+        } catch (e) {
+          debugPrint('[Auth] Failed to process invite after signup: $e');
+        }
+      }
+
       notifyListeners();
       return true;
     } catch (e) {

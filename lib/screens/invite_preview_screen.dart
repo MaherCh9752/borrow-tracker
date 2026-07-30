@@ -18,7 +18,7 @@ class InvitePreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final qrData = 'borrowtracker://invite?code=${invite.inviteCode}';
+    final qrData = 'https://borrowtracker.app/download';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Invite')),
@@ -64,7 +64,7 @@ class InvitePreviewScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'Scan this QR code to accept the invite',
+            'Scan this QR code to download the app',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -138,7 +138,8 @@ class InvitePreviewScreen extends StatelessWidget {
   void _shareInvite(BuildContext context) {
     final text = 'Hey! Join me on Borrow Tracker.\n\n'
         'Use invite code: ${invite.inviteCode}\n\n'
-        'Download the app and enter this code when prompted.';
+        'Download the app at https://borrowtracker.app/download '
+        'and enter this code when signing up.';
     Share.share(text);
   }
 }

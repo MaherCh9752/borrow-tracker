@@ -87,15 +87,17 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 
 ### User Invitation System
 - When no users are found in search, shows **Invite by QR Code** and **Share Link** buttons
-- **`PendingInvite`** model with `token`, `inviteCode`, `createdBy`, `targetPersonName`, `status`, `createdAt`, `expiresAt`
+- **`PendingInvite`** model with `token`, `inviteCode`, `createdBy`, `targetPersonName`, `status`, `createdAt`, `expiresAt`, `entryId`
 - **`InviteService`** creates invites in `pending_invites` Firestore collection
 - 32-char random token (internal) + 6-char uppercase invite code (human-readable)
 - 7-day expiration
 - **InvitePreviewScreen** displays:
-  - QR code (encodes `borrowtracker://invite?code=XXX`)
-  - Invite code with copy-to-clipboard button
-  - Share button (system share sheet with invite text)
-- Firestore security rules for `pending_invites` (creator CRUD, public read for code lookup)
+  - QR code (encodes app download URL only — not invite data)
+  - Invite code (6-char uppercase) with copy-to-clipboard button
+  - Share button (system share sheet with invite text + app download link)
+- **Invite code signup flow**: Optional invite code field on signup screen — verifies the code, autofills display name from `targetPersonName`, processes invite after account creation
+- **Post-signup linking**: `processInviteAfterSignup` accepts the invite and links the new user to the pending entry via `FieldValue.arrayUnion` (no read required, so the new user doesn't need to be a participant yet)
+- Firestore security rules for `pending_invites` (public read for signup code lookup, creator CRUD, anyone can accept a pending invite)
 
 ### Dashboard
 - Summary cards: Total Borrowed (orange), Total Lent (teal)
@@ -308,10 +310,35 @@ lib/
 - Remote: `https://github.com/MaherCh9752/borrow-tracker.git`
 
 ## Pending
-- Deep links for invite acceptance (invite preview screen only — no deep link handler yet)
 - Background invite checking (invites expire silently — no notification to creator)
 
 ## Bug Fixes (July 2026)
+
+### Invite-to-entry linking — 3 root causes fixed (July 2026)
+
+**Problem:** When User A created an invite and User B signed up with the invite code, the pending entry never appeared in User B's dashboard. The entry's `linkedUserId` and `linkedUserName` remained null.
+
+**Root cause 1 — timing gap:** The invite was created in `_handleInvite()` before the entry was saved. `updateInviteEntryId` was called after save, but if User B signed up in the gap, the invite had no `entryId` and `processInviteAfterSignup` returned early without linking.
+
+**Fix 1 (`add_edit_entry_screen.dart`):** Restructured the flow — the invite button now sets a `_wantsInvite` flag instead of creating the invite immediately. The invite is created **after** the entry is saved in `_save()`, with `entryId` guaranteed to be set from the start.
+
+**Root cause 2 — stale in-memory data:** `_verifiedInvite` was fetched once during code verification on the signup screen. If the creator saved the entry and called `updateInviteEntryId` after verification but before signup, the in-memory `PendingInvite` still had `entryId = null`.
+
+**Fix 2 (`invite_service.dart`):** `processInviteAfterSignup` now re-fetches the invite document from Firestore to get the latest `entryId` instead of relying on the in-memory copy.
+
+**Root cause 3 — permission denied on entry read:** When `processInviteAfterSignup` ran `entryRef.get()` to read the current `participants` list, User B wasn't a participant yet — Firestore security rules denied the read. The error was caught silently in `AuthProvider.signUp`, so the signup appeared to succeed but the entry was never linked.
+
+**Fix 3 (`invite_service.dart`):** Replaced the read-then-update pattern with `FieldValue.arrayUnion([newUserId])`. No read is needed — Firestore atomically appends the new user to the `participants` array.
+
+**Related changes:**
+- `firestore.rules`: Updated `shared_entries` update rule to allow a user being linked (`request.auth.uid == request.resource.data.linkedUserId && request.auth.uid in request.resource.data.participants`)
+- `firestore.rules`: Updated `pending_invites` update rule to allow anyone to accept a pending invite (`resource.data.status == 'pending' && request.resource.data.status == 'accepted'`)
+- `firestore.rules`: Changed `pending_invites` read rule to `allow read: if true` (unauthenticated users need to look up invite codes on the signup screen)
+- `firestore.indexes.json`: Added composite index on `shared_entries` (`participants` ARRAY_CONTAINS + `approvalStatus` ASC)
+- `invite_preview_screen.dart`: QR code now encodes app download URL instead of invite deep link
+- `pending_invite_model.dart`: Added `entryId` field for direct invite-to-entry linking
+
+---
 
 ### MIUI / Redmi 13C stability — platform channel timeouts (3 fixes)
 

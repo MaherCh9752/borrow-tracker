@@ -14,9 +14,13 @@ service cloud.firestore {
         && request.auth.uid in request.resource.data.participants
         && request.resource.data.participants.size() >= 1;
 
-      // Any participant can update (status, notes, etc.)
-      allow update: if request.auth != null
-        && request.auth.uid in resource.data.participants;
+      // Participants can update; also allows a user being linked to accept
+      // by adding themselves as a participant in the same update
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.participants ||
+        (request.auth.uid == request.resource.data.linkedUserId
+          && request.auth.uid in request.resource.data.participants)
+      );
 
       // Only the creator can delete
       allow delete: if request.auth != null
@@ -36,16 +40,20 @@ service cloud.firestore {
 
     // Pending invites — user invitation system
     match /pending_invites/{inviteId} {
-      // Creator can read their own invites; anyone authenticated can read by code
-      allow read: if request.auth != null;
+      // Anyone can read by invite code (unauthenticated users on signup screen).
+      // The 6-char random code provides sufficient access control.
+      allow read: if true;
 
       // Any authenticated user can create an invite
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.createdBy;
 
-      // Only the creator can update (accept/reject)
-      allow update: if request.auth != null
-        && request.auth.uid == resource.data.createdBy;
+      // Creator can update; anyone can accept a pending invite by code
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.createdBy ||
+        (resource.data.status == 'pending'
+          && request.resource.data.status == 'accepted')
+      );
 
       // Only the creator can delete
       allow delete: if request.auth != null

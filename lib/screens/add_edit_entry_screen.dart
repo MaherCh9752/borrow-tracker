@@ -35,6 +35,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
   bool _isSaving = false;
   String? _selectedPersonId;
   String? _selectedPersonName;
+  bool _wantsInvite = false;
 
   /// The UID of the user selected via search field.
   String? get selectedPersonId => _selectedPersonId;
@@ -88,35 +89,16 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
     }
   }
 
-  Future<void> _handleInvite() async {
-    final userId = context.read<AuthProvider>().user!.uid;
+  void _setWantsInvite() {
     final personName = _personNameController.text.trim();
     if (personName.isEmpty) return;
-
-    try {
-      final invite = await _inviteService.createInvite(
-        createdBy: userId,
-        targetPersonName: personName,
-      );
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => InvitePreviewScreen(
-              invite: invite,
-              targetPersonName: personName,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('[AddEditEntry] _handleInvite: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to create invite')),
-        );
-      }
-    }
+    setState(() => _wantsInvite = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Invite will be created after saving the entry'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -159,6 +141,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
             : ApprovalStatus.pendingApproval,
       );
 
+      String? savedEntryId;
       bool success;
       if (widget.isEditing) {
         // Create a change request instead of directly editing
@@ -192,11 +175,33 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
           );
         }
       } else {
-        success = await sharedEntryProvider.addEntry(entry: entry);
+        savedEntryId = await sharedEntryProvider.addEntry(entry: entry);
+        success = savedEntryId != null;
       }
 
       if (success && mounted) {
-        Navigator.pop(context, true);
+        // Create invite AFTER saving the entry, so the entryId is guaranteed
+        if (_wantsInvite && savedEntryId != null) {
+          final userId = context.read<AuthProvider>().user!.uid;
+          final personName = _personNameController.text.trim();
+          final invite = await _inviteService.createInvite(
+            createdBy: userId,
+            targetPersonName: personName,
+            entryId: savedEntryId,
+          );
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => InvitePreviewScreen(
+                invite: invite,
+                targetPersonName: personName,
+              ),
+            ),
+          );
+        } else {
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       debugPrint('[AddEditEntry] _save: $e');
@@ -238,7 +243,7 @@ class _AddEditEntryScreenState extends State<AddEditEntryScreen> {
                     _selectedPersonName = _personNameController.text.trim();
                   });
                 },
-                onInviteTap: _handleInvite,
+                onInviteTap: _setWantsInvite,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Name is required.';
                   return null;
