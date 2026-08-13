@@ -51,6 +51,27 @@ class InviteService {
         .update({'entryId': entryId});
   }
 
+  /// Streams invites created by [userId] that are still pending.
+  Stream<List<PendingInvite>> fetchInvites(String userId) {
+    return _firestore
+        .collection(AppConstants.pendingInvitesCollection)
+        .where('createdBy', isEqualTo: userId)
+        .where('status', isEqualTo: 'pending')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              return PendingInvite.fromMap(doc.id, doc.data());
+            }).toList());
+  }
+
+  /// Deletes an invite (only the creator can delete per rules).
+  Future<void> deleteInvite(String inviteId) async {
+    await _firestore
+        .collection(AppConstants.pendingInvitesCollection)
+        .doc(inviteId)
+        .delete();
+  }
+
   /// Looks up an invite by its short [inviteCode].
   Future<PendingInvite?> lookupByCode(String inviteCode) async {
     final snapshot = await _firestore

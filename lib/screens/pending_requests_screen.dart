@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/borrow_lend.dart';
 import '../models/change_request.dart';
+import '../models/pending_invite_model.dart';
 import '../models/shared_entry_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/change_request_provider.dart';
+import '../providers/invite_provider.dart';
 import '../providers/shared_entry_provider.dart';
 import '../theme/app_theme.dart';
 
 /// Screen displaying pending debt entries in two sections:
 /// 1. Entries the current user created (waiting for linked user to accept/reject)
 /// 2. Entries others created linking to current user (needs your approval)
-/// Plus change requests section for pending edits
+/// Plus invites sent to users who haven't registered yet, and change requests
+/// for pending edits
 class PendingRequestsScreen extends StatelessWidget {
   const PendingRequestsScreen({super.key});
 
@@ -20,14 +24,17 @@ class PendingRequestsScreen extends StatelessWidget {
     final userId = context.read<AuthProvider>().user!.uid;
     final provider = context.watch<SharedEntryProvider>();
     final changeProvider = context.watch<ChangeRequestProvider>();
+    final inviteProvider = context.watch<InviteProvider>();
     final waitingForOther = provider.pendingFromMe;
     final needsMyApproval = provider.pendingApprovals;
+    final pendingInvites = inviteProvider.pendingInvites;
     final incomingChanges = changeProvider.incomingRequests;
     final outgoingChanges = changeProvider.outgoingRequests;
     final theme = Theme.of(context);
 
     final isEmpty = waitingForOther.isEmpty &&
         needsMyApproval.isEmpty &&
+        pendingInvites.isEmpty &&
         incomingChanges.isEmpty &&
         outgoingChanges.isEmpty;
 
@@ -74,6 +81,19 @@ class PendingRequestsScreen extends StatelessWidget {
                   ...waitingForOther.map((entry) => _WaitingCard(
                         entry: entry,
                         userId: userId,
+                      )),
+                  const SizedBox(height: 20),
+                ],
+                if (pendingInvites.isNotEmpty) ...[
+                  _SectionHeader(
+                    title: 'Invites sent',
+                    subtitle: 'Waiting for them to join with your code',
+                    count: pendingInvites.length,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 8),
+                  ...pendingInvites.map((invite) => _InviteCard(
+                        invite: invite,
                       )),
                   const SizedBox(height: 20),
                 ],
@@ -271,6 +291,149 @@ class _WaitingCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Card for a pending invite to a user who hasn't registered yet.
+class _InviteCard extends StatelessWidget {
+  final PendingInvite invite;
+
+  const _InviteCard({required this.invite});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final daysLeft =
+        invite.expiresAt.difference(DateTime.now()).inDays + 1;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.person_add_alt_1,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        invite.targetPersonName,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Invited to join — waiting for signup',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.hourglass_top,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Code: ',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    invite.inviteCode,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    daysLeft <= 1 ? 'Expires today' : 'Expires in $daysLeft days',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _copyCode(context),
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('Copy Code'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _cancel(context),
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _copyCode(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: invite.inviteCode));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Invite code copied')),
+    );
+  }
+
+  Future<void> _cancel(BuildContext context) async {
+    final provider = context.read<InviteProvider>();
+    final success = await provider.cancelInvite(invite: invite);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Invite cancelled'
+              : 'Failed to cancel invite'),
+        ),
+      );
+    }
   }
 }
 

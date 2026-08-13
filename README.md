@@ -27,11 +27,12 @@ These scenarios walk through the core workflows end-to-end.
 2. **User A adds an entry for an unregistered user** → taps **+**, types "John" in the Person field → **No users found** appears
 3. **User A creates an invite** → taps **Share Link** → fills amount, deadline, etc. → taps **Add Entry**
 4. **Invite Preview** opens → copy the invite code (e.g. `XK7M2Q`)
-5. **Switch to User B's device** → open a fresh install of the app
-6. **User B signs up with the invite code** → enters `XK7M2Q` in the **Invite Code** field, taps **Verify** → name autofills as "John"
-7. **User B completes signup** → fills email + password → **Sign Up**
-8. **User B approves the entry** → hamburger menu → **Pending Requests** → **Needs your approval** → **Accept**
-9. **Both users see the entry** in their dashboard totals
+5. **User A tracks the invite** → hamburger menu → **Pending Requests** → **Invites sent** — the invite is already there with Copy Code / Cancel actions
+6. **Switch to User B's device** → open a fresh install of the app
+7. **User B signs up with the invite code** → enters `XK7M2Q` in the **Invite Code** field, taps **Verify** → name autofills as "John"
+8. **User B completes signup** → fills email + password → **Sign Up**
+9. **User B approves the entry** → hamburger menu → **Pending Requests** → **Needs your approval** → **Accept**
+10. **Both users see the entry** in their dashboard totals — User A's invite card disappears from Pending Requests automatically
 
 > For a two-device test, install the app on two phones or use an emulator + physical device.
 
@@ -217,6 +218,18 @@ When you search for a user who isn't registered yet, you can invite them to join
 
 Invites expire in 7 days.
 
+#### Tracking a Pending Invite
+
+As soon as the entry + invite are saved, the invite is visible to the creator — no need to wait for the new user to register:
+
+1. Open hamburger menu → **Pending Requests**
+2. Under **"Invites sent"**, find the invite card showing:
+   - The invited person's name
+   - The invite code (tap **Copy Code** to resend it)
+   - How many days remain until expiry
+   - **Cancel** — deletes the invite and its linked entry (use this if you created it by mistake)
+3. When the invited user signs up with the code, the card disappears automatically and the entry moves to the normal approval flow
+
 #### Signing Up with an Invite Code
 
 1. Open the app for the first time → **Sign Up** screen
@@ -236,10 +249,11 @@ Invites expire in 7 days.
 |------|-----------------|-----------------|
 | 1 | Adds entry for "John", taps Invite | |
 | 2 | Shares invite code with John | |
-| 3 | | Downloads app, signs up with invite code |
-| 4 | | Name autofilled, completes signup |
-| 5 | | Sees entry in Pending Requests → Accept |
-| 6 | Sees entry confirmed on dashboard | Entry active in dashboard |
+| 3 | Sees invite in Pending Requests → **Invites sent** (copy/resend anytime) | |
+| 4 | | Downloads app, signs up with invite code |
+| 5 | | Name autofilled, completes signup |
+| 6 | Invite card disappears after signup | Sees entry in Pending Requests → Accept |
+| 7 | Sees entry confirmed on dashboard | Entry active in dashboard |
 
 ---
 
@@ -255,7 +269,7 @@ The first screen after sign-in.
 | Pending count | Shows number of unpaid entries |
 | Deadlines (7d) | Shows entries due in the next 7 days |
 | By Person | Expandable cards for each linked person with avatar, lent/borrowed totals, net balance, next deadline |
-| Pending Requests badge | Red badge on menu icon showing total pending count |
+| Pending Requests badge | Red badge on menu icon — counts approvals, change requests, and sent invites |
 
 **Expandable person cards:** Tap any person card to expand and see individual entries sorted by deadline priority (overdue first, nearest first). Tap an entry to edit it. Color-coded deadline labels: red = overdue, orange = due within 3 days, gray = future.
 
@@ -269,7 +283,7 @@ All navigation is through the hamburger menu (≡) in the AppBar.
 |-----------|--------------|
 | All Records | Full list with search, filters, and actions |
 | Grouped by Person | Entries grouped by linked person with expandable lists |
-| Pending Requests | Debt approval workflow (with badge count) |
+| Pending Requests | Debt approval workflow + sent invites (with badge count) |
 | Statistics | Three interactive charts |
 | Export to CSV | Preview and save CSV file |
 | Export to PDF | Preview, share, or print PDF |

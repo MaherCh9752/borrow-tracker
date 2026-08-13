@@ -67,9 +67,10 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
 - **Entry type inversion**: When User A creates a "borrow" entry linking to User B, it appears as a "lend" entry for User B (and vice versa) via `entryTypeFor(userId)`
 
 ### Debt Approval Workflow
-- **PendingRequestsScreen** with four sections:
+- **PendingRequestsScreen** with five sections:
   - **Waiting for approval**: Entries you created that are pending the linked user's approval — shows linked user name
   - **Needs your approval**: Entries others created linking to you — shows creator's name (`createdByName`) with accept/reject buttons
+  - **Invites sent**: Invites to users who haven't registered yet — visible immediately, before the invited user signs up (see User Invitation System)
   - **Change requests**: Incoming edit proposals from other users with diff display and accept/reject
   - **Your change requests**: Outgoing edit proposals awaiting the other user's approval with cancel option
 - **Accept**: Sets `approvalStatus = ACTIVE` via partial update (`editEntryFromMap`) — entry now counts in dashboard/statistics
@@ -97,6 +98,9 @@ A production-ready Flutter mobile app for tracking borrowed and lent money, with
   - Share button (system share sheet with invite text + app download link)
 - **Invite code signup flow**: Optional invite code field on signup screen — verifies the code, autofills display name from `targetPersonName`, processes invite after account creation
 - **Post-signup linking**: `processInviteAfterSignup` accepts the invite and links the new user to the pending entry via `FieldValue.arrayUnion` (no read required, so the new user doesn't need to be a participant yet)
+- **Pending requests visibility (pre-signup)**: `InviteProvider` listens to `pending_invites` created by the current user (`createdBy` + `status == 'pending'` stream) — pending invites appear in the Pending Requests screen under **"Invites sent"** even before the new user registers
+- **Invite card** (Pending Requests): shows target person name, invite code, and expiry — **Copy Code** button for resending, **Cancel** button that deletes the invite and its linked entry (prevents orphaned pending entries)
+- **Dashboard badge**: pending invite count contributes to the Pending Requests badge on the hamburger menu
 - Firestore security rules for `pending_invites` (public read for signup code lookup, creator CRUD, anyone can accept a pending invite)
 
 ### Dashboard
@@ -262,7 +266,7 @@ lib/
 │   ├── pdf_service.dart               # PDF generation with table + summary
 │   ├── csv_service.dart               # CSV generation with headers
 │   ├── biometric_service.dart         # Biometric authentication via local_auth
-│   ├── invite_service.dart            # Pending invite CRUD + token/code generation
+│   ├── invite_service.dart            # Pending invite CRUD + token/code generation + fetch stream
 │   └── change_request_service.dart    # Change request Firestore CRUD + real-time stream
 ├── providers/
 │   ├── auth_provider.dart             # Auth state
@@ -272,14 +276,15 @@ lib/
 │   ├── connectivity_provider.dart     # Exposes isOnline to the widget tree
 │   ├── security_provider.dart         # App lock state, enable/disable, biometric auth
 │   ├── theme_provider.dart            # ThemeMode persistence, cycle, current label
-│   └── change_request_provider.dart   # Change request state, create/accept/reject/cancel
+│   ├── change_request_provider.dart   # Change request state, create/accept/reject/cancel
+│   └── invite_provider.dart           # Pending invite state, listen, cancel (deletes linked entry)
 ├── screens/
 │   ├── auth_screen.dart               # Login / Sign up / Password reset
 │   ├── dashboard_screen.dart          # Summary cards, grouped by person, nav with badge
 │   ├── all_records_screen.dart        # Full list with actions & filters
 │   ├── grouped_entries_screen.dart    # Entries grouped by person with expandable lists
 │   ├── add_edit_entry_screen.dart     # Entry form with UserSearchField + invite integration
-│   ├── pending_requests_screen.dart   # Debt approval + change request workflow (four sections)
+│   ├── pending_requests_screen.dart   # Debt approval + change request + invite workflow (five sections)
 │   ├── invite_preview_screen.dart     # QR code + invite code + share/copy
 │   ├── notification_settings_screen.dart # Reminder config UI
 │   ├── statistics_screen.dart         # Charts: monthly totals, payment status, debt history
@@ -304,6 +309,7 @@ lib/
 - `shared_preferences` for first-run tracking, theme mode persistence
 - Firestore composite index on `shared_entries` (`participants` ASC + `createdAt` DESC)
 - Firestore composite index on `change_requests` (`participants` ASC + `status` ASC + `createdAt` DESC)
+- Firestore composite index on `pending_invites` (`createdBy` ASC + `status` ASC + `createdAt` DESC)
 - Firestore security rules for `shared_entries` (participants read, creator delete, participant update)
 - Firestore security rules for `pending_invites` (authenticated read, creator CRUD)
 - Firestore security rules for `change_requests` (participants read/write)
@@ -446,3 +452,21 @@ lib/
 5. **`_save()` catch block pops with success** (`add_edit_entry_screen.dart`): Error catch now shows an error snackbar instead of `Navigator.pop(context, true)` which masked failures.
 
 6. **`SharedEntryProvider.editEntryFromMap()`** added to provider — partial-update method that delegates to `SharedEntryService.editEntryFromMap()`, used by approval accept/reject and change-request acceptance.
+
+---
+
+## Improvements (August 2026)
+
+### Pending invites visible in Pending Requests before the invited user registers
+
+**Problem:** When an entry was created for a non-existing user with an invite, the entry had `linkedUserId = null`, so it never appeared in the Pending Requests screen (the `pendingFromMe` getter requires `linkedUserId != null`). The pending invite only became visible after the new user signed up with the invite code, leaving the creator with no way to track or resend pending invites.
+
+**Fixes:**
+- `invite_service.dart`: Added `fetchInvites(userId)` — a real-time stream of `pending_invites` where `createdBy == userId && status == 'pending'`, ordered by `createdAt` DESC. Added `deleteInvite(inviteId)` (creator-only per rules).
+- `providers/invite_provider.dart` (new): `InviteProvider` subscribes to the invite stream, exposes `pendingInvites` (non-expired, still pending), and `cancelInvite()` deletes the invite **and** its linked entry — without this, the orphaned entry (pending approval, no linked user) would never be reachable again.
+- `main.dart`: Registered `InviteProvider` in `MultiProvider`.
+- `dashboard_screen.dart`: Starts/refreshes the invite listener alongside entries and change requests; pending invite count now adds to the Pending Requests menu badge.
+- `pending_requests_screen.dart`: New **"Invites sent"** section with an invite card per pending invite — person name, invite code, expiry countdown, **Copy Code** (resend) and **Cancel** (deletes invite + entry) actions. The section disappears automatically once the invite is accepted during signup.
+- `firestore.indexes.json`: Added composite index on `pending_invites` (`createdBy` ASC + `status` ASC + `createdAt` DESC).
+
+**Result:** The creator sees the pending request the moment the entry + invite are saved — before the invited user even downloads the app. Accepting the flow (invite code signup) transitions the card into a normal pending-approval entry as before.

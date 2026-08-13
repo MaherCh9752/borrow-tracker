@@ -12,6 +12,7 @@ import 'providers/auth_provider.dart';
 import 'providers/change_request_provider.dart';
 import 'providers/connectivity_provider.dart';
 import 'providers/entry_provider.dart';
+import 'providers/invite_provider.dart';
 import 'providers/shared_entry_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/security_provider.dart';
@@ -65,6 +66,7 @@ class BorrowTrackerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ConnectivityProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => SecurityProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => ChangeRequestProvider()),
+        ChangeNotifierProvider(create: (_) => InviteProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
